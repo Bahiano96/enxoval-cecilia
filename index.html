@@ -120,6 +120,18 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
 .sz-body{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;margin-bottom:12px;background:#fff}
 .sz-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid #f9f9f9;font-size:13px}
 .sz-item:last-child{border-bottom:none}
+.qty-row{padding:9px 13px;border-bottom:1px solid #f5f5f5;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.qty-row:last-child{border-bottom:none}
+.qty-name{font-size:13px;flex:1;min-width:0;line-height:1.3}
+.qty-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+.qty-controls{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.qty-input{width:52px;padding:5px 7px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;text-align:center;outline:none;-moz-appearance:textfield;appearance:textfield}
+.qty-input::-webkit-outer-spin-button,.qty-input::-webkit-inner-spin-button{-webkit-appearance:none}
+.qty-input:focus{border-color:var(--pink)}
+.qty-badge{font-size:11px;font-weight:700;padding:3px 8px;border-radius:10px;white-space:nowrap}
+.qty-ok{background:#e8f5e9;color:#2e7d32}
+.qty-pend{background:#fce4ec;color:#c62828}
+.qty-wrap{font-size:11px;color:var(--muted);white-space:nowrap}
 .tip{background:#e8f5e9;border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:13px;color:#2e7d32;line-height:1.5}
 .tip-blue{background:#e3f2fd;color:#1565c0}
 .pri-item{padding:10px 0;border-bottom:1px solid #f5f5f5;font-size:13px;display:flex;align-items:flex-start;gap:9px}
@@ -184,9 +196,11 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
 
   <div class="tabs">
     <div class="tab active" data-tab="painel">📊 Painel</div>
-    <div class="tab" data-tab="comprar">🛍️ Comprar</div>
-    <div class="tab" data-tab="dias">📅 Por Dia</div>
+    <div class="tab" data-tab="eletronicos">📱 Eletrônicos</div>
+    <div class="tab" data-tab="cremes">🧴 Cremes</div>
+    <div class="tab" data-tab="utilidades">🔧 Utilidades</div>
     <div class="tab" data-tab="roupas">👗 Roupas</div>
+    <div class="tab" data-tab="dias">📅 Por Dia</div>
     <div class="tab" data-tab="equipe">👥 Equipe</div>
     <div class="tab" data-tab="brasil">📋 Ref.</div>
   </div>
@@ -204,21 +218,25 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
       <div class="card"><div class="card-title">📅 Plano por Dia</div><div id="dayPlan"></div></div>
     </div>
 
-    <div class="view" id="tab-comprar">
-      <input type="search" class="search" id="srch" placeholder="🔍 Buscar item..." oninput="renderComprar()">
-      <div class="filter-bar">
-        <button class="fb active" onclick="setFilter('all',this)">Todos</button>
-        <button class="fb" onclick="setFilter('hi',this)">⭐ Prior.</button>
-        <button class="fb" onclick="setFilter('pend',this)">⬜ Pendentes</button>
-        <button class="fb" onclick="setFilter('done',this)">✅ Comprados</button>
-      </div>
-      <div id="byCat"></div>
+    <div class="view" id="tab-eletronicos">
+      <div class="tip tip-blue">📱 <strong>Best Buy</strong> (Sex 19/06) — melhor estoque para eletrônicos. Confirme compatibilidade antes de comprar.</div>
+      <div id="eletView"></div>
+    </div>
+
+    <div class="view" id="tab-cremes">
+      <div class="tip tip-blue">🧴 <strong>Target e Walmart</strong> (Qua 17/06) — seção baby. Compre multiples dos essenciais, muito mais barato que no Brasil.</div>
+      <div id="cremesView"></div>
+    </div>
+
+    <div class="view" id="tab-utilidades">
+      <div class="tip tip-blue">🔧 Itens de uso geral — mamadeiras, passeio, alimentação, quarto e mais. Distribuídos entre MacroBaby, Target e Walmart.</div>
+      <div id="utilView"></div>
     </div>
 
     <div class="view" id="tab-dias"><div id="byDay"></div></div>
 
     <div class="view" id="tab-roupas">
-      <div class="tip tip-blue">👗 <strong>Carter's Outlet (Qui 18/06)</strong> — 6 bodies ~US$25. Prefira zíper!</div>
+      <div class="tip tip-blue">👗 <strong>Carter's Outlet (Qui 18/06)</strong> — 6 bodies ~US$25. Prefira zíper! Once Upon a Child para usados.</div>
       <div id="roupasView"></div>
     </div>
 
@@ -268,12 +286,15 @@ function enterApp(user){
 // ── STATE ─────────────────────────────────────────────────────────────────────
 function SK(){return'cecilia_v3_'+currentUser;}
 function CK(){return'cecilia_cl_v1_'+currentUser;}
-let chk={},cChk={};
-function loadState(){chk=JSON.parse(localStorage.getItem(SK())||'{}');cChk=JSON.parse(localStorage.getItem(CK())||'{}');}
+function QK(){return'cecilia_qty_v1_'+currentUser;}
+let chk={},cChk={},qty={};
+function loadState(){chk=JSON.parse(localStorage.getItem(SK())||'{}');cChk=JSON.parse(localStorage.getItem(CK())||'{}');qty=JSON.parse(localStorage.getItem(QK())||'{}');}
 function save(){localStorage.setItem(SK(),JSON.stringify(chk));}
 function saveC(){localStorage.setItem(CK(),JSON.stringify(cChk));}
+function saveQty(){localStorage.setItem(QK(),JSON.stringify(qty));}
 function toggle(id){chk[id]=!chk[id];if(!chk[id])delete chk[id];save();refreshAll();}
 function toggleC(k){cChk[k]=!cChk[k];if(!cChk[k])delete cChk[k];saveC();renderRoupas();renderTeam();}
+function setQty(k,v){const n=Math.max(0,parseInt(v)||0);if(n===0)delete qty[k];else qty[k]=n;saveQty();}
 function getUserChecked(uid){return JSON.parse(localStorage.getItem('cecilia_v3_'+uid)||'{}');}
 
 // ── DATA ──────────────────────────────────────────────────────────────────────
@@ -420,13 +441,58 @@ const items=[
   {id:'sb4',cat:'SERVIÇO',n:'Amaciante roupas de bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
 ];
 
+// Estações calibradas para BH — Cecília nasce em outubro 🌸
+// BH em out/nov/dez = Primavera/Verão (quente, chuva)
+// BH em mai/jun/jul = Inverno (frio à noite, seco)
 const clothing=[
-  {sz:'RN — Novembro (Primavera)',c:'#7b1fa2',items:['10 Bodies manga curta','6 Bodies manga longa','10 Calças com ou sem pé','2 Shorts / Bermudas','7 Macacões com pé','2 Macacões sem pé','2 Macaquinhos (Romper)','4 Meias','3 Luvas','2 Toucas','1 Saída de Maternidade','2 Sapatinhos ou meias-sapato']},
-  {sz:'P — 0 a 3 meses | Nov–Fev',c:'#1565c0',items:['14 Bodies manga curta','8 Bodies manga longa','8 Calças','3 Shorts / Bermudas','7 Macacões com pé','1 Macacão sem pé','3 Macaquinhos','4 Roupas de passeio','2 Casacos','4 Meias','2/4 Toucas','2 Sapatinhos']},
-  {sz:'M — 3 a 6 meses | Fev–Mai',c:'#2e7d32',items:['10 Bodies manga curta','10 Bodies manga longa','6 Calças','3 Shorts / Bermudas','8 Macacões / Pijamas','4 Macacões sem pé','4 Macaquinhos','6 Roupas de passeio','1 Blusa social','2 Blusas polo','2 Casacos','4 Meias']},
-  {sz:'G — 6 a 9 meses | Mai–Ago',c:'#e65100',items:['8 Bodies manga curta','10 Bodies manga longa','8 Calças','4 Shorts / Bermudas','8 Macacões / Pijamas','2 Macacões sem pé','4 Macaquinhos','8 Roupas de passeio','2 Blusas sociais','4 Blusas polo','3 Casacos','4 Meias','3 Sapatos','2 Roupas de banho','1 Chapéu de sol','1 Roupão']},
-  {sz:'GG — 9 a 12 meses | Ago–Nov',c:'#c62828',items:['3 Bodies regata','5 Bodies manga curta','5 Bodies manga longa','2 Camisas regata','5 Camisas manga curta','5 Camisas manga longa','6 Calças','5 Shorts / Bermudas','5 Macacões / Pijamas','4 Macaquinhos','8 Roupas de passeio','2 Blusas sociais','6 Blusas polo','3 Casacos','1 Jaqueta corta vento','10 Meias','4 Sapatos','2 Roupas de banho','1 Chapéu de sol','1 Roupão']},
+  {sz:'RN — Outubro 🌸 Primavera BH',season:'☀️ Quente | Peças leves, manga curta',c:'#7b1fa2',items:['10 Bodies manga curta (prioridade!)','6 Bodies manga longa (noites mais frescas)','10 Calças com ou sem pé','2 Shorts / Bermudas','7 Macacões com pé','2 Macacões sem pé','2 Macaquinhos (Romper)','4 Meias','3 Luvas','2 Toucas','1 Saída de Maternidade','2 Sapatinhos ou meias-sapato']},
+  {sz:'P — 0 a 3 meses | Nov–Jan 🌞 Verão BH',season:'🔥 Muito quente e chuvoso | Foque em manga curta',c:'#1565c0',items:['14 Bodies manga curta (principal)','8 Bodies manga longa (ar-condicionado)','8 Calças leves','3 Shorts / Bermudas','7 Macacões com pé (pijamas)','1 Macacão sem pé','3 Macaquinhos','4 Roupas de passeio leves','2 Casacos finos (só para A/C)','4 Meias','2 Toucas','2 Sapatinhos']},
+  {sz:'M — 3 a 6 meses | Fev–Abr 🍂 Fim Verão/Outono BH',season:'🌤️ Quente → Ameno | Mistura de peças',c:'#2e7d32',items:['10 Bodies manga curta','10 Bodies manga longa','6 Calças','3 Shorts / Bermudas','8 Macacões / Pijamas','4 Macacões sem pé','4 Macaquinhos','6 Roupas de passeio','1 Blusa social','2 Blusas polo','2 Casacos (abril esfria)','4 Meias']},
+  {sz:'G — 6 a 9 meses | Mai–Jul ❄️ INVERNO BH',season:'🧥 Frio! | Peças quentes obrigatórias (noites 10–15°C)',c:'#e65100',items:['4 Bodies manga curta (poucos)','12 Bodies manga longa (essencial!)','8 Calças grossas / legging','2 Shorts (só dias de sol)','8 Pijamas quentinhos com pé','4 Macacões com pé (fleece)','4 Macaquinhos','8 Roupas de passeio com manga longa','2 Blusas sociais','4 Blusas polo / suéter','3 Casacos / jaquetas','1 Macacão de frio','4 Meias grossas','3 Sapatos','2 Roupas de banho','1 Roupão']},
+  {sz:'GG — 9 a 12 meses | Ago–Out 🌱 Fim Inverno/Primavera BH',season:'🌈 Ameno → Quente | Início das chuvas em outubro',c:'#c62828',items:['3 Bodies regata (setembro+)','5 Bodies manga curta','5 Bodies manga longa','2 Camisas regata','5 Camisas manga curta','5 Camisas manga longa','6 Calças','5 Shorts / Bermudas','5 Macacões / Pijamas','4 Macaquinhos','8 Roupas de passeio','2 Blusas sociais','6 Blusas polo','3 Casacos (agosto ainda faz frio)','1 Jaqueta corta vento','10 Meias','4 Sapatos','2 Roupas de banho','1 Chapéu de sol (outubro de volta!)','1 Roupão']},
 ];
+
+// ── SUBCATEGORIAS EUA ─────────────────────────────────────────────────────────
+const SUB={
+  // Eletrônicos
+  q9:'elet',q10:'elet',q11:'elet',q12:'elet',mae2:'elet',
+  // Cremes, higiene, medicamentos
+  b7:'creme',h3:'creme',h4:'creme',h5:'creme',h6:'creme',h7:'creme',
+  h13:'creme',h14:'creme',h15:'creme',h16:'creme',h17:'creme',h18:'creme',
+  h20:'creme',h21:'creme',mae3:'creme',
+};
+function getSub(id){return SUB[id]||'util';}
+
+// ── ITENS BRASIL (amiga comprou) ──────────────────────────────────────────────
+// Mapeamento: qual aba do Brasil vai para qual aba do app
+const BRSUB={
+  // → aba Cremes
+  bb1:'creme',bb2:'creme',
+  hb1:'creme',hb2:'creme',hb3:'creme',hb4:'creme',hb5:'creme',
+  hb6:'creme',hb7:'creme',hb8:'creme',hb9:'creme',hb10:'creme',
+  maeb1:'creme',
+  // → aba Utilidades
+  qb1:'util',qb2:'util',qb3:'util',qb4:'util',qb5:'util',
+  qb6:'util',qb7:'util',qb8:'util',qb9:'util',qb10:'util',
+  qb11:'util',qb12:'util',qb13:'util',
+  pb1:'util',pb2:'util',
+  ab1:'util',
+  sb1:'util',sb2:'util',sb3:'util',sb4:'util',
+};
+function renderBrItem(it){
+  return`<div class="item" style="background:#f0fff4;border-left:3px solid #2e7d32;opacity:.9">
+    <span style="font-size:18px;flex-shrink:0">🇧🇷</span>
+    <div class="icontent">
+      <div class="iname">${it.n}</div>
+      <div class="imeta">
+        ${it.br?`<span class="tag t-brand">🏷 ${it.br}</span>`:''}
+        <span class="tag" style="background:#e8f5e9;color:#2e7d32;font-weight:700">✅ Amiga comprou no Brasil</span>
+        ${it.note?`<span class="tag" style="background:#fff8e1;color:#f57f17">💡 ${it.note}</span>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+function brItemsForTab(tab){return brItems().filter(i=>BRSUB[i.id]===tab);}
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 let filt='all';
@@ -515,18 +581,105 @@ function renderDias(){
 }
 
 // ── ROUPAS ───────────────────────────────────────────────────────────────────
+function parseItem(str){
+  const m=str.match(/^(\d+(?:\/\d+)?)\s+(.+)/);
+  if(!m)return{meta:1,name:str};
+  // handle "2/4 Toucas" → use first number as meta
+  const meta=parseInt(m[1]);
+  return{meta,name:m[2]};
+}
 function renderRoupas(){
-  let html='';
+  let totalMeta=0,totalBought=0;
+  // pre-calc totals for summary
+  clothing.forEach((g,gi)=>{g.items.forEach((it,ii)=>{const{meta}=parseItem(it);const b=qty[`${gi}-${ii}`]||0;totalMeta+=meta;totalBought+=Math.min(b,meta);});});
+  const totalLeft=totalMeta-totalBought;
+  let html=`<div class="tip tip-blue" style="margin-bottom:12px">🌡️ Estações calibradas para <strong>Belo Horizonte</strong> — Cecília nasce em <strong>outubro</strong>. Tamanho G (6-9m) cai no <strong>inverno de BH</strong>: capriche nas peças quentinhas!</div>
+  <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:12px;color:var(--muted)">Total de peças</div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:#2e7d32">${totalBought}</div><div style="font-size:10px;color:var(--muted)">compradas</div></div>
+      <div style="font-size:18px;color:var(--border)">·</div>
+      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:${totalLeft>0?'#c62828':'#2e7d32'}">${totalLeft}</div><div style="font-size:10px;color:var(--muted)">faltando</div></div>
+      <div style="font-size:18px;color:var(--border)">·</div>
+      <div style="text-align:center"><div style="font-size:22px;font-weight:700;color:var(--muted)">${totalMeta}</div><div style="font-size:10px;color:var(--muted)">meta total</div></div>
+    </div>
+  </div>`;
   clothing.forEach((g,gi)=>{
-    const dc=g.items.filter((_,ii)=>cChk[`${gi}-${ii}`]).length;
-    html+=`<div style="margin-bottom:12px"><div class="sz-hdr" style="background:${g.c}">
-      <span>${g.sz}</span><span style="font-size:11px;opacity:.8">${dc}/${g.items.length}</span></div>
-      <div class="sz-body">${g.items.map((it,ii)=>`<div class="sz-item" style="${cChk[`${gi}-${ii}`]?'opacity:.35':''}">
-        <input type="checkbox" style="accent-color:${g.c};width:20px;height:20px;flex-shrink:0" ${cChk[`${gi}-${ii}`]?'checked':''} onchange="toggleC('${gi}-${ii}')">
-        <span style="${cChk[`${gi}-${ii}`]?'text-decoration:line-through':''}">${it}</span>
-      </div>`).join('')}</div></div>`;
+    let grpMeta=0,grpBought=0;
+    g.items.forEach((it,ii)=>{const{meta}=parseItem(it);const b=qty[`${gi}-${ii}`]||0;grpMeta+=meta;grpBought+=Math.min(b,meta);});
+    const grpLeft=grpMeta-grpBought;
+    html+=`<div style="margin-bottom:14px"><div class="sz-hdr" style="background:${g.c}">
+      <div><div style="font-weight:700">${g.sz}</div><div style="font-size:11px;opacity:.85;margin-top:2px">${g.season}</div></div>
+      <div style="text-align:right;white-space:nowrap;margin-left:8px;font-size:11px;line-height:1.4">
+        <div style="opacity:.9">${grpBought}/${grpMeta} peças</div>
+        ${grpLeft>0?`<div style="background:rgba(255,255,255,.25);border-radius:6px;padding:1px 5px">falta ${grpLeft}</div>`:'<div style="background:rgba(255,255,255,.25);border-radius:6px;padding:1px 5px">✅</div>'}
+      </div></div>
+      <div class="sz-body">${g.items.map((it,ii)=>{
+        const{meta,name}=parseItem(it);
+        const k=`${gi}-${ii}`;
+        const b=qty[k]||0;
+        const left=Math.max(0,meta-b);
+        const done=left===0;
+        return`<div class="qty-row" style="${done?'opacity:.5':''}">
+          <div class="qty-name" style="${done?'text-decoration:line-through;color:var(--muted)':''}">${name}</div>
+          <div class="qty-controls">
+            <span class="qty-wrap">de ${meta}</span>
+            <input type="number" class="qty-input" min="0" max="${meta+5}" value="${b||''}" placeholder="0"
+              style="accent-color:${g.c};border-color:${b>0?(done?'#2e7d32':g.c):'var(--border)'}"
+              oninput="setQty('${k}',this.value)"
+              onblur="renderRoupas()">
+            <span class="qty-badge ${done?'qty-ok':'qty-pend'}">${done?'✅ ok':'−'+left}</span>
+          </div>
+        </div>`;
+      }).join('')}</div></div>`;
   });
   document.getElementById('roupasView').innerHTML=html;
+}
+
+// ── ELETRÔNICOS ───────────────────────────────────────────────────────────────
+function renderEletronicos(){
+  const its=euaItems().filter(i=>getSub(i.id)==='elet');
+  const dc=its.filter(i=>chk[i.id]).length;
+  document.getElementById('eletView').innerHTML=
+    `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+       <span style="font-size:13px;color:var(--muted)">${dc} de ${its.length} para comprar nos EUA</span>
+       <span style="background:#e3f2fd;color:#1565c0;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600">${its.length-dc} pendentes</span>
+     </div>`+
+    (its.length?its.map(renderItem).join(''):'<div class="empty">Nenhum eletrônico cadastrado</div>');
+}
+
+// ── CREMES & HIGIENE ──────────────────────────────────────────────────────────
+function renderCremes(){
+  const its=euaItems().filter(i=>getSub(i.id)==='creme');
+  const brIts=brItemsForTab('creme');
+  const dc=its.filter(i=>chk[i.id]).length;
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+       <span style="font-size:13px;color:var(--muted)">${dc} de ${its.length} para comprar nos EUA</span>
+       <span style="background:#fce4ec;color:#c2185b;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600">${its.length-dc} pendentes</span>
+     </div>`;
+  html+=(its.length?its.map(renderItem).join(''):'<div class="empty">Nenhum item de higiene EUA</div>');
+  if(brIts.length){
+    html+=`<div style="margin-top:16px;margin-bottom:8px;padding:8px 12px;background:#e8f5e9;border-radius:8px;font-weight:700;font-size:12px;color:#2e7d32;display:flex;align-items:center;gap:6px">🇧🇷 Amiga comprou no Brasil <span style="font-weight:400;opacity:.7">(${brIts.length} itens)</span></div>`;
+    html+=brIts.map(renderBrItem).join('');
+  }
+  document.getElementById('cremesView').innerHTML=html;
+}
+
+// ── UTILIDADES ────────────────────────────────────────────────────────────────
+function renderUtilidades(){
+  const its=euaItems().filter(i=>getSub(i.id)==='util');
+  const brIts=brItemsForTab('util');
+  const dc=its.filter(i=>chk[i.id]).length;
+  let html=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+       <span style="font-size:13px;color:var(--muted)">${dc} de ${its.length} para comprar nos EUA</span>
+       <span style="background:#f3e5f5;color:#7b1fa2;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600">${its.length-dc} pendentes</span>
+     </div>`;
+  html+=(its.length?its.map(renderItem).join(''):'<div class="empty">Nenhum item de utilidades EUA</div>');
+  if(brIts.length){
+    html+=`<div style="margin-top:16px;margin-bottom:8px;padding:8px 12px;background:#e8f5e9;border-radius:8px;font-weight:700;font-size:12px;color:#2e7d32;display:flex;align-items:center;gap:6px">🇧🇷 Amiga comprou no Brasil <span style="font-weight:400;opacity:.7">(${brIts.length} itens)</span></div>`;
+    html+=brIts.map(renderBrItem).join('');
+  }
+  document.getElementById('utilView').innerHTML=html;
 }
 
 // ── EQUIPE ───────────────────────────────────────────────────────────────────
@@ -567,7 +720,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-function refreshAll(){renderPainel();renderComprar();renderDias();renderRoupas();renderTeam();renderBrasil();}
+function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderTeam();renderBrasil();}
 
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 (function setupPWA(){
