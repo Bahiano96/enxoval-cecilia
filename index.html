@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Enxoval da Cecília 🌸</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#e91e8c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cecília 🌸">
+<link id="appIcon" rel="apple-touch-icon" href="">
+<link id="manifest" rel="manifest" href="">
+
+<style>
+:root {
+  --pink:#e91e8c; --purple:#9c27b0;
+  --bg:#f5f5f5; --card:#fff; --border:#e0e0e0;
+  --text:#212121; --muted:#757575;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px;display:flex;flex-direction:column}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#e91e8c,#9c27b0);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;padding-top:calc(24px + var(--safe-top))}
+#loginScreen.hidden{display:none}
+.login-logo{font-size:58px;margin-bottom:6px;line-height:1}
+.login-title{color:#fff;font-size:24px;font-weight:700;margin-bottom:3px}
+.login-sub{color:rgba(255,255,255,.75);font-size:13px;margin-bottom:28px}
+.login-card{background:#fff;border-radius:20px;padding:24px;width:100%;max-width:340px;box-shadow:0 12px 40px rgba(0,0,0,.3)}
+.login-label{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;display:block;text-transform:uppercase;letter-spacing:.5px}
+.user-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.user-btn{padding:14px 10px;border:2px solid var(--border);border-radius:12px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;color:var(--text)}
+.user-btn.selected{border-color:var(--pink);background:#fce4ec;color:var(--pink)}
+.user-avatar{font-size:26px;display:block;margin-bottom:5px}
+.pw-wrap{position:relative}
+.login-input{width:100%;padding:14px;border:2px solid var(--border);border-radius:12px;font-size:16px;outline:none;transition:border .15s;letter-spacing:3px}
+.login-input:focus{border-color:var(--pink)}
+.pw-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:20px;color:var(--muted);user-select:none}
+.login-btn{width:100%;padding:16px;background:linear-gradient(135deg,#e91e8c,#9c27b0);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;transition:opacity .15s}
+.login-btn:disabled{opacity:.4;cursor:not-allowed}
+.login-err{color:#c62828;font-size:12px;margin-top:8px;text-align:center;min-height:16px}
+
+/* APP SHELL */
+#app{display:none;flex-direction:column;height:100%}
+
+/* HEADER */
+header{background:linear-gradient(135deg,#e91e8c,#9c27b0);color:#fff;padding:12px 16px;padding-top:calc(12px + var(--safe-top));flex-shrink:0}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start}
+header h1{font-size:17px;font-weight:700;line-height:1.2}
+.dates{font-size:11px;opacity:.85;margin-top:1px}
+.user-chip{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);border-radius:20px;padding:5px 11px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:10px}
+.prog-wrap{background:rgba(255,255,255,.3);border-radius:8px;height:7px;margin-top:10px}
+.prog-bar{background:#fff;border-radius:8px;height:7px;transition:width .4s}
+.prog-text{font-size:11px;margin-top:3px;opacity:.9}
+
+/* TABS */
+.tabs{display:flex;background:#fff;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:12px 15px;font-size:12px;white-space:nowrap;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:var(--muted);font-weight:600;flex-shrink:0}
+.tab.active{color:var(--pink);border-bottom-color:var(--pink)}
+
+/* SCROLL AREA */
+.scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(16px + var(--safe-bottom))}
+
+/* VIEWS */
+.view{display:none;padding:12px}
+.view.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center}
+.stat-n{font-size:26px;font-weight:700;color:var(--pink)}
+.stat-l{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.3}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+.card-title{font-weight:700;font-size:14px;margin-bottom:10px}
+.day-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;margin-bottom:7px}
+.day-lbl{font-weight:600;font-size:13px}
+.day-sub{font-size:11px;opacity:.75;margin-top:1px}
+.day-ct{font-size:13px;font-weight:700;min-width:40px;text-align:right}
+.filter-bar{display:flex;gap:7px;margin-bottom:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+.filter-bar::-webkit-scrollbar{display:none}
+.fb{padding:8px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0}
+.fb.active{background:var(--pink);color:#fff;border-color:var(--pink)}
+.search{width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:12px;font-size:16px;margin-bottom:10px;outline:none}
+.search:focus{border-color:var(--pink)}
+.cat-wrap{margin-bottom:12px}
+.cat-hdr{display:flex;align-items:center;justify-content:space-between;background:#fff;padding:11px 13px;border-radius:10px 10px 0 0;border:1px solid var(--border);cursor:pointer;user-select:none}
+.cat-title{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.badge{background:#fce4ec;color:var(--pink);font-size:11px;padding:2px 7px;border-radius:10px;font-weight:700}
+.chevron{transition:transform .2s;font-size:12px}
+.cat-wrap.collapsed .chevron{transform:rotate(-90deg)}
+.cat-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px}
+.cat-wrap.collapsed .cat-body{display:none}
+.item{display:flex;align-items:flex-start;padding:11px 13px;border-bottom:1px solid #f5f5f5;gap:10px;background:#fff}
+.item:last-child{border-bottom:none}
+.item.done{opacity:.4}
+.item.done .iname{text-decoration:line-through}
+.item.hi{border-left:3px solid #ff5722}
+.icheck{width:22px;height:22px;cursor:pointer;flex-shrink:0;margin-top:1px;accent-color:var(--pink)}
+.icontent{flex:1;min-width:0}
+.iname{font-size:13px;font-weight:500;line-height:1.35}
+.imeta{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.tag{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.t-brand{background:#e3f2fd;color:#1565c0}
+.t-store{background:#fff3e0;color:#e65100}
+.t-day{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.t-hi{background:#fbe9e7;color:#bf360c}
+.inote{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+.day-section{margin-bottom:16px}
+.day-hdr{color:#fff;padding:11px 14px;border-radius:10px 10px 0 0}
+.day-hdr h3{font-size:14px;font-weight:700}
+.day-hdr .dsub{font-size:11px;opacity:.85;margin-top:2px}
+.day-hdr .dct{font-size:11px;margin-top:4px;opacity:.8}
+.day-body{border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px}
+.sz-hdr{color:#fff;padding:9px 13px;border-radius:8px 8px 0 0;font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.sz-body{border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;margin-bottom:12px;background:#fff}
+.sz-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-bottom:1px solid #f9f9f9;font-size:13px}
+.sz-item:last-child{border-bottom:none}
+.tip{background:#e8f5e9;border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:13px;color:#2e7d32;line-height:1.5}
+.tip-blue{background:#e3f2fd;color:#1565c0}
+.pri-item{padding:10px 0;border-bottom:1px solid #f5f5f5;font-size:13px;display:flex;align-items:flex-start;gap:9px}
+.pri-item:last-child{border-bottom:none}
+.br-item{display:flex;align-items:flex-start;gap:10px;padding:10px 13px;border-bottom:1px solid #f5f5f5;background:#f9fff9}
+.br-item:last-child{border-bottom:none}
+.empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:13px}
+.team-row{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid #f5f5f5}
+.team-row:last-child{border-bottom:none}
+.team-name{font-weight:600;font-size:13px;min-width:80px}
+.mini-bar-wrap{flex:1;height:7px;background:#f0f0f0;border-radius:4px}
+.mini-bar{height:7px;background:linear-gradient(90deg,var(--pink),var(--purple));border-radius:4px;transition:width .5s}
+.team-pct{font-size:12px;font-weight:700;color:var(--pink);min-width:38px;text-align:right}
+
+/* Install banner */
+#installBanner{display:none;background:linear-gradient(135deg,#e91e8c22,#9c27b022);border:1px solid #e91e8c44;border-radius:12px;padding:12px 14px;margin:12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+#installBanner.hidden{display:none!important}
+.install-text{flex:1;font-size:13px;color:#9c27b0;font-weight:500;line-height:1.4}
+.install-btn{background:linear-gradient(135deg,#e91e8c,#9c27b0);color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-logo">🌸</div>
+  <div class="login-title">Enxoval da Cecília</div>
+  <div class="login-sub">Portal da família · Kissimmee / Orlando</div>
+  <div class="login-card">
+    <label class="login-label">Quem está acessando?</label>
+    <div class="user-grid">
+      <button class="user-btn" data-user="matheus" onclick="selectUser(this)"><span class="user-avatar">👨</span>Matheus</button>
+      <button class="user-btn" data-user="fernanda" onclick="selectUser(this)"><span class="user-avatar">👩</span>Fernanda</button>
+      <button class="user-btn" data-user="isaque" onclick="selectUser(this)"><span class="user-avatar">🧑</span>Isaque</button>
+      <button class="user-btn" data-user="janaina" onclick="selectUser(this)"><span class="user-avatar">👩‍🦱</span>Janaína</button>
+    </div>
+    <label class="login-label">Senha</label>
+    <div class="pw-wrap">
+      <input type="password" class="login-input" id="pwInput" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <span class="pw-eye" onclick="togglePw()">👁</span>
+    </div>
+    <div class="login-err" id="loginErr"></div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()" disabled>Entrar →</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-top">
+      <div>
+        <h1>🌸 Enxoval da Cecília</h1>
+        <div class="dates">📍 Kissimmee / Orlando · 17–19 jun 2026</div>
+      </div>
+      <div class="user-chip" id="userChip" onclick="logout()">
+        <span id="userIcon">👤</span><span id="userName">—</span><span style="opacity:.6;font-size:10px">sair</span>
+      </div>
+    </div>
+    <div class="prog-wrap"><div class="prog-bar" id="mainProg" style="width:0%"></div></div>
+    <div class="prog-text" id="progText">Carregando...</div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="painel">📊 Painel</div>
+    <div class="tab" data-tab="comprar">🛍️ Comprar</div>
+    <div class="tab" data-tab="dias">📅 Por Dia</div>
+    <div class="tab" data-tab="roupas">👗 Roupas</div>
+    <div class="tab" data-tab="equipe">👥 Equipe</div>
+    <div class="tab" data-tab="brasil">📋 Ref.</div>
+  </div>
+
+  <div class="scroll-area">
+    <div id="installBanner" class="hidden">
+      <div>📲</div>
+      <div class="install-text"><strong>Adicionar à tela inicial</strong><br>Acesse como app, sem abrir o browser!</div>
+      <button class="install-btn" id="installBtn">Instalar</button>
+    </div>
+
+    <div class="view active" id="tab-painel">
+      <div class="stats" id="statsGrid"></div>
+      <div class="card"><div class="card-title">⭐ Prioritários Pendentes</div><div id="priList"></div></div>
+      <div class="card"><div class="card-title">📅 Plano por Dia</div><div id="dayPlan"></div></div>
+    </div>
+
+    <div class="view" id="tab-comprar">
+      <input type="search" class="search" id="srch" placeholder="🔍 Buscar item..." oninput="renderComprar()">
+      <div class="filter-bar">
+        <button class="fb active" onclick="setFilter('all',this)">Todos</button>
+        <button class="fb" onclick="setFilter('hi',this)">⭐ Prior.</button>
+        <button class="fb" onclick="setFilter('pend',this)">⬜ Pendentes</button>
+        <button class="fb" onclick="setFilter('done',this)">✅ Comprados</button>
+      </div>
+      <div id="byCat"></div>
+    </div>
+
+    <div class="view" id="tab-dias"><div id="byDay"></div></div>
+
+    <div class="view" id="tab-roupas">
+      <div class="tip tip-blue">👗 <strong>Carter's Outlet (Qui 18/06)</strong> — 6 bodies ~US$25. Prefira zíper!</div>
+      <div id="roupasView"></div>
+    </div>
+
+    <div class="view" id="tab-equipe">
+      <div class="tip tip-blue">👥 Progresso de cada pessoa na lista compartilhada.</div>
+      <div class="card"><div class="card-title">🌸 Equipe</div><div id="teamView"></div></div>
+    </div>
+
+    <div class="view" id="tab-brasil">
+      <div class="tip" style="background:#fff8e1;color:#e65100;border-left:3px solid #ff9800">📋 <strong>Referência da sua amiga</strong> — itens que ela comprou no Brasil. Use como base para decidir o que comprar por lá.</div>
+      <div id="brasilView"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+const USERS={matheus:{icon:'👨',label:'Matheus'},fernanda:{icon:'👩',label:'Fernanda'},isaque:{icon:'🧑',label:'Isaque'},janaina:{icon:'👩‍🦱',label:'Janaína'}};
+const PASSWORD='ceci26';
+let currentUser=null;
+
+function selectUser(btn){
+  document.querySelectorAll('.user-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  currentUser=btn.dataset.user;
+  document.getElementById('loginBtn').disabled=false;
+}
+function togglePw(){const i=document.getElementById('pwInput');i.type=i.type==='password'?'text':'password';}
+function doLogin(){
+  if(!currentUser){document.getElementById('loginErr').textContent='Selecione seu nome.';return;}
+  if(document.getElementById('pwInput').value!==PASSWORD){document.getElementById('loginErr').textContent='Senha incorreta.';document.getElementById('pwInput').value='';return;}
+  sessionStorage.setItem('cecilia_user',currentUser);
+  enterApp(currentUser);
+}
+function logout(){if(!confirm('Sair?'))return;sessionStorage.removeItem('cecilia_user');location.reload();}
+function enterApp(user){
+  currentUser=user;
+  document.getElementById('loginScreen').classList.add('hidden');
+  const app=document.getElementById('app');
+  app.style.display='flex';app.style.flexDirection='column';app.style.height='100%';
+  const u=USERS[user];
+  document.getElementById('userIcon').textContent=u.icon;
+  document.getElementById('userName').textContent=u.label;
+  loadState();refreshAll();
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+function SK(){return'cecilia_v3_'+currentUser;}
+function CK(){return'cecilia_cl_v1_'+currentUser;}
+let chk={},cChk={};
+function loadState(){chk=JSON.parse(localStorage.getItem(SK())||'{}');cChk=JSON.parse(localStorage.getItem(CK())||'{}');}
+function save(){localStorage.setItem(SK(),JSON.stringify(chk));}
+function saveC(){localStorage.setItem(CK(),JSON.stringify(cChk));}
+function toggle(id){chk[id]=!chk[id];if(!chk[id])delete chk[id];save();refreshAll();}
+function toggleC(k){cChk[k]=!cChk[k];if(!cChk[k])delete cChk[k];saveC();renderRoupas();renderTeam();}
+function getUserChecked(uid){return JSON.parse(localStorage.getItem('cecilia_v3_'+uid)||'{}');}
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DAYS={
+  D1:{l:'🔴 Qua 17/06 — HOJE',s:'MacroBaby + Target + Walmart',c:'#b71c1c'},
+  D2:{l:'🟣 Qui 18/06',s:"Outlets — Carter's, OshKosh, Gap, Nike",c:'#6a1b9a'},
+  D3:{l:'🔵 Sex 19/06',s:'Best Buy + Dollar Tree + complementos',c:'#1565c0'},
+};
+const CE={QUARTO:'🛏️',BANHO:'🛁',HIGIENE:'💊',MAMADEIRAS:'🍼',PASSEIO:'🚗',ALIMENTAÇÃO:'🥣',ENTRETENIMENTO:'🎮',MÃE:'🤱',SERVIÇO:'🧺'};
+
+const items=[
+  {id:'q1',cat:'QUARTO',n:'Protetor de colchão impermeável',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q2',cat:'QUARTO',n:'4 Lençóis com elástico',br:'Cloud Island (Target)',st:'Target',d:'D1',s:'eua',p:'medium',note:'Marca própria Target — ótima qualidade'},
+  {id:'q3',cat:'QUARTO',n:'Naninha',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q4',cat:'QUARTO',n:'3 Mantas frescas',br:'',st:'Target / Burlington',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q5',cat:'QUARTO',n:'10 Cueiros / Toalhas fralda',br:'',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q6',cat:'QUARTO',n:'Cueiro ajustável com velcro (para dormir)',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:'Com braço para cima e charuto'},
+  {id:'q7',cat:'QUARTO',n:'10 Paninhos de boca',br:'',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q8',cat:'QUARTO',n:'Kit higiene (pote p/ água)',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'q9',cat:'QUARTO',n:'Babá eletrônica com câmera',br:'VTech / Motorola',st:'Best Buy / Target',d:'D3',s:'eua',p:'high',note:'Best Buy 1620 W Osceola Pkwy, Kissimmee. US$80–180'},
+  {id:'q10',cat:'QUARTO',n:'Luminária ou abajur com luz fraca',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'q11',cat:'QUARTO',n:'Hatch Rest – Smart Sound Machine',br:'Hatch',st:'Best Buy / Target',d:'D3',s:'eua',p:'high',note:'Best Buy tem estoque mais garantido'},
+  {id:'q12',cat:'QUARTO',n:'Ruído branco para carrinho',br:'Yogasleep Baby Hushh',st:'Amazon / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'qb1',cat:'QUARTO',n:'Berço ou Mini Cama',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb2',cat:'QUARTO',n:'Poltrona de amamentação',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb3',cat:'QUARTO',n:'Cômoda para trocador',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb4',cat:'QUARTO',n:'Trocador com capa impermeável',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb5',cat:'QUARTO',n:'Ninho',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb6',cat:'QUARTO',n:'Kit de protetor de berço',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb7',cat:'QUARTO',n:'Lixeira para fraldas anti-odor',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb8',cat:'QUARTO',n:'Móbile',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb9',cat:'QUARTO',n:'Enfeite para Porta de Maternidade',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb10',cat:'QUARTO',n:'Livro do Bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb11',cat:'QUARTO',n:'25 Cabides de bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb12',cat:'QUARTO',n:'Colmeias Organizadoras',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'qb13',cat:'QUARTO',n:'Cortina blackout 100%',br:'',st:'',d:'',s:'brasil',p:'',note:'Já tinha no quarto'},
+  {id:'b1',cat:'BANHO',n:'Baldinho de enxaguar',br:'Munchkin',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'b2',cat:'BANHO',n:'Rede ou almofada de apoio p/ banho',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'b3',cat:'BANHO',n:'3 Brinquedos de banho',br:'',st:'Target / Dollar Tree',d:'D1',s:'eua',p:'low',note:''},
+  {id:'b4',cat:'BANHO',n:'Suporte para brinquedos de banho',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'b5',cat:'BANHO',n:'4 Toalhas fraldas grandes (swaddle)',br:'',st:"Carter's / Target",d:'D2',s:'eua',p:'medium',note:''},
+  {id:'b6',cat:'BANHO',n:'4 Toalhas grandes com capuz',br:'',st:"Carter's / Target",d:'D2',s:'eua',p:'medium',note:''},
+  {id:'b7',cat:'BANHO',n:'2 Sabonetes pH neutro (cabeça aos pés)',br:'Cetaphil Baby',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'bb1',cat:'BANHO',n:'Banheira',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'bb2',cat:'BANHO',n:'2 Sabonetes para vapor e relaxamento',br:'Babyganics',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'h1',cat:'HIGIENE',n:'Aspirador nasal',br:'Fridababy / NoseFrida',st:'Target / Walmart',d:'D1',s:'eua',p:'high',note:'Item indispensável!'},
+  {id:'h2',cat:'HIGIENE',n:'Seringa para dar remédio',br:'Fridababy MediFrida',st:'Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'h3',cat:'HIGIENE',n:'Pomadas prevenção de assaduras',br:'Desitin Creamy + A+D',st:'Walmart / Target',d:'D1',s:'eua',p:'high',note:'3 BG/2 BP Desitin · 2 PG/4 BP A+D'},
+  {id:'h4',cat:'HIGIENE',n:'Hidratante para bebê',br:'Cetaphil / Mustela',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h5',cat:'HIGIENE',n:'4 Protetores solares bebê (6+ meses)',br:'Neutrogena Pure & Free Baby',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h6',cat:'HIGIENE',n:'Repelente para bebê (3+ meses)',br:'BABYGARL eletrônico',st:'Amazon / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h7',cat:'HIGIENE',n:'Lenços umedecidos nariz e rosto',br:'Boogie Wipes',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h8',cat:'HIGIENE',n:'Kit de pente e escova',br:'Fridababy / Dermafrida',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h9',cat:'HIGIENE',n:'Kit tesoura, cortador e lixa de unhas',br:'Fridababy',st:'Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'h10',cat:'HIGIENE',n:'Seringa para lavagem nasal',br:'',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h11',cat:'HIGIENE',n:'Kit refil aspirador nasal',br:'Fridababy',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h12',cat:'HIGIENE',n:'Termômetro digital',br:'Braun',st:'Target / Walmart',d:'D1',s:'eua',p:'high',note:''},
+  {id:'h13',cat:'HIGIENE',n:'Caixa alívio de cólica e gases',br:'Fridababy Fart Freeing Essential',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h14',cat:'HIGIENE',n:'Remédio para cólica',br:'Colic Calm Homeopático',st:'Target / Walmart',d:'D1',s:'eua',p:'high',note:''},
+  {id:'h15',cat:'HIGIENE',n:'2 Caixas adesivo para aliviar febre',br:'Fridababy FeverFrida / Bekoool',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h16',cat:'HIGIENE',n:'2 Óleos de massagem',br:"Zarbee's Baby Calming",st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h17',cat:'HIGIENE',n:'Remédio nascimento dos dentes',br:'Orajel Baby',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'h18',cat:'HIGIENE',n:'Pct cotonetes de bebê',br:'',st:'Dollar Tree',d:'D3',s:'eua',p:'low',note:'Dollar Tree — muito barato'},
+  {id:'h19',cat:'HIGIENE',n:'Dedeira silicone / Luva cuidado oral',br:'Fridababy / Safety 1st',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'h20',cat:'HIGIENE',n:'2 Pct lenços esterilizadores chupeta',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'h21',cat:'HIGIENE',n:'Lenços bactericidas',br:'Babyganics',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'hb1',cat:'HIGIENE',n:'Pomada alívio de picadas',br:'Cicastela',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb2',cat:'HIGIENE',n:'Álcool gel / higienizador mãos',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb3',cat:'HIGIENE',n:'Álcool 70%',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb4',cat:'HIGIENE',n:'Bolsa térmica para cólicas',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb5',cat:'HIGIENE',n:'3 Pcts compressa de gaze',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb6',cat:'HIGIENE',n:'3 Pcts quadrados de algodão',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb7',cat:'HIGIENE',n:'Escova de dentes 0-2 anos',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb8',cat:'HIGIENE',n:'Pasta de dente com flúor',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb9',cat:'HIGIENE',n:'Protetores tomadas, quinas e gavetas',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'hb10',cat:'HIGIENE',n:'Nebulizador',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'m1',cat:'MAMADEIRAS',n:'Mamadeiras',br:'Comotomo / Dr. Brown vidro',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'m2',cat:'MAMADEIRAS',n:'Bicos mamadeira (refil por idade)',br:'Comotomo',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:'0-3m / 3-6m / 6+m'},
+  {id:'m3',cat:'MAMADEIRAS',n:'Escova para mamadeira',br:'Munchkin',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'m4',cat:'MAMADEIRAS',n:'Chupetas',br:'Nanobebe / MAM',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'m5',cat:'MAMADEIRAS',n:'Prendedor de chupeta',br:'',st:'Target / MacroBaby',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'m6',cat:'MAMADEIRAS',n:'Porta chupetas',br:'Ali + Oli',st:'MacroBaby / Amazon',d:'D1',s:'eua',p:'low',note:'Se não achar no Brasil'},
+  {id:'m7',cat:'MAMADEIRAS',n:'Remédio para coriza',br:'Coryzalia Boiron',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'m8',cat:'MAMADEIRAS',n:'Dosador de leite em pó',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'p1',cat:'PASSEIO',n:'🚗 CARRINHO',br:'Silver Cross Jet 3 / Baby Yoyo 2 / Nuna TRVL / Maxi-Cosi EVA',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:'Levantar a alça para testar. Confirmar compatibilidade com bebê conforto'},
+  {id:'p2',cat:'PASSEIO',n:'🚗 Bebê conforto / Cadeirinha de carro',br:'Chicco KeyFit 30 / Graco SnugRide / Britax B-Safe',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:'A partir de 0 meses. Confirmar adaptadores'},
+  {id:'p3',cat:'PASSEIO',n:'2 Adaptadores bebê conforto → carrinho',br:'',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:'Adaptadores corretos para o carrinho escolhido'},
+  {id:'p4',cat:'PASSEIO',n:'Organizador / gancho para carrinho',br:'',st:'MacroBaby / Amazon',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p5',cat:'PASSEIO',n:'Mosquiteiro para carrinho',br:'',st:'MacroBaby / Amazon',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p6',cat:'PASSEIO',n:'Protetor para cinto de segurança',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p7',cat:'PASSEIO',n:'Espelho retrovisor para carro',br:'Brica',st:'Target / Amazon',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p8',cat:'PASSEIO',n:'2 Protetores de sol vidro do carro',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p9',cat:'PASSEIO',n:'Trocador portátil',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'p10',cat:'PASSEIO',n:'Saco impermeável (roupa molhada)',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p11',cat:'PASSEIO',n:'🎒 Bolsa maternidade',br:'Skip Hop',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:'Skip Hop — boa organização'},
+  {id:'p12',cat:'PASSEIO',n:'Bolsa térmica para passeio',br:'',st:'Target / MacroBaby',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'p13',cat:'PASSEIO',n:'Roupa com proteção solar',br:'',st:'Target / Outlets',d:'D2',s:'eua',p:'medium',note:''},
+  {id:'p14',cat:'PASSEIO',n:'🤱 Sling ou Canguru',br:'Ergobaby / BabyBjörn',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:''},
+  {id:'pb1',cat:'PASSEIO',n:'2 Fraldas de piscina',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'pb2',cat:'PASSEIO',n:'Boias de piscina',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'a1',cat:'ALIMENTAÇÃO',n:'Esterilizador de microondas',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'a2',cat:'ALIMENTAÇÃO',n:'Escorredor exclusivo pro bebê',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a3',cat:'ALIMENTAÇÃO',n:'6 Babadores de silicone ou aventais',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a4',cat:'ALIMENTAÇÃO',n:'Babador impermeável (para bolsa)',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a5',cat:'ALIMENTAÇÃO',n:'4 Pratos microondas com ventosa',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:'1 com divisórias + 1 sem'},
+  {id:'a6',cat:'ALIMENTAÇÃO',n:'2 Bowls com ventosa',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a7',cat:'ALIMENTAÇÃO',n:'Kit colheres BPA free',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a8',cat:'ALIMENTAÇÃO',n:'Kit talheres inox (colher e garfo)',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a9',cat:'ALIMENTAÇÃO',n:'2 Copos treinamento 360 (água e suco)',br:'Copo 360',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a10',cat:'ALIMENTAÇÃO',n:'Garrafinha térmica',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:'Vale muito trazer dos EUA'},
+  {id:'a11',cat:'ALIMENTAÇÃO',n:'Pote térmico',br:'Thermos',st:'Target / Walmart',d:'D1',s:'eua',p:'medium',note:'Vale muito trazer dos EUA'},
+  {id:'a12',cat:'ALIMENTAÇÃO',n:'Bolsa térmica para alimentação',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a13',cat:'ALIMENTAÇÃO',n:'Porta biscoitos / Snack Bag',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'a14',cat:'ALIMENTAÇÃO',n:'6 Potes armazenamento de papinha',br:'Avent',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'a15',cat:'ALIMENTAÇÃO',n:'4 Formas de gelo com tampa',br:'',st:'Target / Walmart',d:'D1',s:'eua',p:'low',note:''},
+  {id:'a16',cat:'ALIMENTAÇÃO',n:'Pct sacos herméticos para freezer',br:'',st:'Walmart',d:'D1',s:'eua',p:'low',note:''},
+  {id:'ab1',cat:'ALIMENTAÇÃO',n:'Cadeira para alimentação com cinto',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'e1',cat:'ENTRETENIMENTO',n:'Cadeira de descanso',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e2',cat:'ENTRETENIMENTO',n:'Tapete de atividades (preto e branco)',br:'',st:'Target',d:'D1',s:'eua',p:'high',note:'Estimulação visual para bebê'},
+  {id:'e3',cat:'ENTRETENIMENTO',n:'Almofada tummy time',br:'',st:'Walmart',d:'D1',s:'eua',p:'high',note:'Para fortalecer o pescoço'},
+  {id:'e4',cat:'ENTRETENIMENTO',n:'2 Mordedores (que possam congelar)',br:'Sophie / de Pezinho',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e5',cat:'ENTRETENIMENTO',n:'2 Chocalhos',br:'',st:'Target / Dollar Tree',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e6',cat:'ENTRETENIMENTO',n:'Bichinho de tecido',br:'',st:'Target / MacroBaby',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e7',cat:'ENTRETENIMENTO',n:'Móbile de carrinho',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e8',cat:'ENTRETENIMENTO',n:'Brinquedo de sucção',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'e9',cat:'ENTRETENIMENTO',n:'Brinquedo de encaixar',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'e10',cat:'ENTRETENIMENTO',n:'Brinquedo de empilhar',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'e11',cat:'ENTRETENIMENTO',n:'Kit de bolas sensoriais',br:'',st:'Target',d:'D1',s:'eua',p:'low',note:''},
+  {id:'e12',cat:'ENTRETENIMENTO',n:'Livros contrastes de cor e/ou texturas',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'mae1',cat:'MÃE',n:'4 Sutiãs de amamentação',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'high',note:''},
+  {id:'mae2',cat:'MÃE',n:'🥛 Extrator de leite elétrico',br:'Medela Swing / Spectra S1',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:'Muito mais barato que no Brasil'},
+  {id:'mae3',cat:'MÃE',n:'Creme ou óleo anti-estrias',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'mae4',cat:'MÃE',n:'Coletor de leite manual',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'mae5',cat:'MÃE',n:'Almofada de amamentação',br:'',st:'MacroBaby',d:'D1',s:'eua',p:'high',note:'A anterior (FON) não agradou — busque outra marca'},
+  {id:'mae6',cat:'MÃE',n:'4 Camisolas ou Pijamas amamentação',br:'',st:'Target / Marshalls',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'mae7',cat:'MÃE',n:'4 Calcinhas largas e confortáveis',br:'',st:'Target',d:'D1',s:'eua',p:'medium',note:''},
+  {id:'mae8',cat:'MÃE',n:'6 Potes vidro armazenamento de leite',br:'',st:'MacroBaby / Target',d:'D1',s:'eua',p:'low',note:'Não usou na primeira vez'},
+  {id:'mae9',cat:'MÃE',n:'2 Pares rosquinhas para seios',br:'',st:'MacroBaby',d:'D1',s:'eua',p:'low',note:'Não usou na primeira vez'},
+  {id:'maeb1',cat:'MÃE',n:'1 Pct absorventes pós parto',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'s1',cat:'SERVIÇO',n:'3 Sacos lavagem roupas delicadas',br:'',st:'Target / Walmart',d:'D1',s:'eua',p:'low',note:''},
+  {id:'sb1',cat:'SERVIÇO',n:'Cesto de roupas sujas bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'sb2',cat:'SERVIÇO',n:'Balde ou bacia exclusivo bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'sb3',cat:'SERVIÇO',n:'Sabão Líquido Neutro',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+  {id:'sb4',cat:'SERVIÇO',n:'Amaciante roupas de bebê',br:'',st:'',d:'',s:'brasil',p:'',note:''},
+];
+
+const clothing=[
+  {sz:'RN — Novembro (Primavera)',c:'#7b1fa2',items:['10 Bodies manga curta','6 Bodies manga longa','10 Calças com ou sem pé','2 Shorts / Bermudas','7 Macacões com pé','2 Macacões sem pé','2 Macaquinhos (Romper)','4 Meias','3 Luvas','2 Toucas','1 Saída de Maternidade','2 Sapatinhos ou meias-sapato']},
+  {sz:'P — 0 a 3 meses | Nov–Fev',c:'#1565c0',items:['14 Bodies manga curta','8 Bodies manga longa','8 Calças','3 Shorts / Bermudas','7 Macacões com pé','1 Macacão sem pé','3 Macaquinhos','4 Roupas de passeio','2 Casacos','4 Meias','2/4 Toucas','2 Sapatinhos']},
+  {sz:'M — 3 a 6 meses | Fev–Mai',c:'#2e7d32',items:['10 Bodies manga curta','10 Bodies manga longa','6 Calças','3 Shorts / Bermudas','8 Macacões / Pijamas','4 Macacões sem pé','4 Macaquinhos','6 Roupas de passeio','1 Blusa social','2 Blusas polo','2 Casacos','4 Meias']},
+  {sz:'G — 6 a 9 meses | Mai–Ago',c:'#e65100',items:['8 Bodies manga curta','10 Bodies manga longa','8 Calças','4 Shorts / Bermudas','8 Macacões / Pijamas','2 Macacões sem pé','4 Macaquinhos','8 Roupas de passeio','2 Blusas sociais','4 Blusas polo','3 Casacos','4 Meias','3 Sapatos','2 Roupas de banho','1 Chapéu de sol','1 Roupão']},
+  {sz:'GG — 9 a 12 meses | Ago–Nov',c:'#c62828',items:['3 Bodies regata','5 Bodies manga curta','5 Bodies manga longa','2 Camisas regata','5 Camisas manga curta','5 Camisas manga longa','6 Calças','5 Shorts / Bermudas','5 Macacões / Pijamas','4 Macaquinhos','8 Roupas de passeio','2 Blusas sociais','6 Blusas polo','3 Casacos','1 Jaqueta corta vento','10 Meias','4 Sapatos','2 Roupas de banho','1 Chapéu de sol','1 Roupão']},
+];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+let filt='all';
+const euaItems=()=>items.filter(i=>i.s==='eua');
+const brItems=()=>items.filter(i=>i.s==='brasil');
+const doneCount=()=>euaItems().filter(i=>chk[i.id]).length;
+const total=()=>euaItems().length;
+function mkTag(cls,txt){return`<span class="tag ${cls}">${txt}</span>`;}
+
+function renderItem(it){
+  const ck=chk[it.id]||false,di=it.d?DAYS[it.d]:null,dc=di?di.c:'#999';
+  return`<div class="item${ck?' done':''}${it.p==='high'?' hi':''}">
+    <input type="checkbox" class="icheck" ${ck?'checked':''} onchange="toggle('${it.id}')">
+    <div class="icontent">
+      <div class="iname">${it.n}</div>
+      <div class="imeta">
+        ${it.br?mkTag('t-brand','🏷 '+it.br):''}
+        ${it.st?mkTag('t-store','🏪 '+it.st):''}
+        ${di?`<span class="tag t-day" style="background:${dc}22;color:${dc}">📅 ${di.l}</span>`:''}
+        ${it.p==='high'?mkTag('t-hi','⭐ PRIORITÁRIO'):''}
+      </div>
+      ${it.note?`<div class="inote">💡 ${it.note}</div>`:''}
+    </div>
+  </div>`;
+}
+
+// ── PAINEL ───────────────────────────────────────────────────────────────────
+function renderPainel(){
+  const t=total(),d=doneCount(),pct=t>0?Math.round(d/t*100):0;
+  document.getElementById('mainProg').style.width=pct+'%';
+  document.getElementById('progText').textContent=`${d} de ${t} itens comprados (${pct}%)`;
+  const hi=euaItems().filter(i=>i.p==='high'),hiPend=hi.filter(i=>!chk[i.id]);
+  document.getElementById('statsGrid').innerHTML=
+    `<div class="stat"><div class="stat-n">${d}</div><div class="stat-l">Comprados<br>nos EUA</div></div>
+     <div class="stat"><div class="stat-n">${t-d}</div><div class="stat-l">Faltando<br>comprar</div></div>
+     <div class="stat"><div class="stat-n" style="color:#bf360c">${hiPend.length}</div><div class="stat-l">Prior.<br>pendentes</div></div>`;
+  document.getElementById('priList').innerHTML=hiPend.length===0
+    ?'<div style="color:#2e7d32;font-size:13px;padding:8px 0">🎉 Todos os prioritários foram comprados!</div>'
+    :hiPend.map(it=>`<div class="pri-item"><input type="checkbox" class="icheck" onchange="toggle('${it.id}')" ${chk[it.id]?'checked':''}><div><div style="font-weight:600;font-size:13px">${it.n}</div><div style="font-size:11px;color:#999;margin-top:2px">${it.st} · ${it.d?DAYS[it.d].l:''}</div></div></div>`).join('');
+  document.getElementById('dayPlan').innerHTML=Object.entries(DAYS).map(([k,v])=>{
+    const di=euaItems().filter(i=>i.d===k);if(!di.length)return'';
+    const dc=di.filter(i=>chk[i.id]).length;
+    return`<div class="day-row" style="background:${v.c}14;border-left:3px solid ${v.c}">
+      <div><div class="day-lbl" style="color:${v.c}">${v.l}</div><div class="day-sub">${v.s}</div></div>
+      <div class="day-ct" style="color:${dc===di.length?'#2e7d32':v.c}">${dc}/${di.length}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── COMPRAR ──────────────────────────────────────────────────────────────────
+function setFilter(f,btn){filt=f;document.querySelectorAll('.fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderComprar();}
+function renderComprar(){
+  const srch=(document.getElementById('srch').value||'').toLowerCase();
+  const cats=[...new Set(euaItems().map(i=>i.cat))];let html='';
+  cats.forEach(cat=>{
+    let ci=euaItems().filter(i=>i.cat===cat);
+    if(filt==='hi')ci=ci.filter(i=>i.p==='high');
+    if(filt==='pend')ci=ci.filter(i=>!chk[i.id]);
+    if(filt==='done')ci=ci.filter(i=>chk[i.id]);
+    if(srch)ci=ci.filter(i=>i.n.toLowerCase().includes(srch)||(i.br||'').toLowerCase().includes(srch));
+    if(!ci.length)return;
+    const dc=ci.filter(i=>chk[i.id]).length;
+    html+=`<div class="cat-wrap"><div class="cat-hdr" onclick="this.closest('.cat-wrap').classList.toggle('collapsed')">
+      <div class="cat-title">${CE[cat]||'📦'} ${cat} <span class="badge">${dc}/${ci.length}</span></div>
+      <span class="chevron">▼</span></div>
+      <div class="cat-body">${ci.map(renderItem).join('')}</div></div>`;
+  });
+  document.getElementById('byCat').innerHTML=html||'<div class="empty">Nenhum item 🎉</div>';
+}
+
+// ── DIAS ─────────────────────────────────────────────────────────────────────
+function renderDias(){
+  let html='';
+  Object.entries(DAYS).forEach(([k,v])=>{
+    const pend=euaItems().filter(i=>i.d===k&&!chk[i.id]),done=euaItems().filter(i=>i.d===k&&chk[i.id]);
+    html+=`<div class="day-section"><div class="day-hdr" style="background:${v.c}">
+      <h3>${v.l}</h3><div class="dsub">${v.s}</div>
+      <div class="dct">✅ ${done.length} · ⬜ ${pend.length}</div>
+    </div><div class="day-body">
+      ${pend.map(renderItem).join('')}
+      ${pend.length===0&&done.length===0?'<div class="empty">Nenhum item</div>':''}
+      ${done.length>0?`<div style="padding:8px 12px;font-size:11px;color:#999;border-top:1px solid #f0f0f0;background:#fafafa">✅ ${done.length} comprado(s)</div>`:''}
+    </div></div>`;
+  });
+  document.getElementById('byDay').innerHTML=html;
+}
+
+// ── ROUPAS ───────────────────────────────────────────────────────────────────
+function renderRoupas(){
+  let html='';
+  clothing.forEach((g,gi)=>{
+    const dc=g.items.filter((_,ii)=>cChk[`${gi}-${ii}`]).length;
+    html+=`<div style="margin-bottom:12px"><div class="sz-hdr" style="background:${g.c}">
+      <span>${g.sz}</span><span style="font-size:11px;opacity:.8">${dc}/${g.items.length}</span></div>
+      <div class="sz-body">${g.items.map((it,ii)=>`<div class="sz-item" style="${cChk[`${gi}-${ii}`]?'opacity:.35':''}">
+        <input type="checkbox" style="accent-color:${g.c};width:20px;height:20px;flex-shrink:0" ${cChk[`${gi}-${ii}`]?'checked':''} onchange="toggleC('${gi}-${ii}')">
+        <span style="${cChk[`${gi}-${ii}`]?'text-decoration:line-through':''}">${it}</span>
+      </div>`).join('')}</div></div>`;
+  });
+  document.getElementById('roupasView').innerHTML=html;
+}
+
+// ── EQUIPE ───────────────────────────────────────────────────────────────────
+function renderTeam(){
+  const t=total();
+  document.getElementById('teamView').innerHTML=Object.entries(USERS).map(([uid,u])=>{
+    const uc=getUserChecked(uid),d=euaItems().filter(i=>uc[i.id]).length,pct=t>0?Math.round(d/t*100):0,isMe=uid===currentUser;
+    return`<div class="team-row" style="${isMe?'background:#fce4ec':''}">
+      <div class="team-name">${u.icon} ${u.label}${isMe?' <span style="font-size:10px;color:var(--pink)">(você)</span>':''}</div>
+      <div class="mini-bar-wrap"><div class="mini-bar" style="width:${pct}%"></div></div>
+      <div class="team-pct">${d}/${t}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── BRASIL ───────────────────────────────────────────────────────────────────
+function renderBrasil(){
+  const cats=[...new Set(brItems().map(i=>i.cat))];let html='';
+  cats.forEach(cat=>{
+    const ci=brItems().filter(i=>i.cat===cat);
+    html+=`<div class="cat-wrap" style="margin-bottom:12px"><div class="cat-hdr" style="background:#f9fff9">
+      <div class="cat-title" style="color:#2e7d32">${CE[cat]||'📦'} ${cat} <span style="background:#e8f5e9;color:#2e7d32;font-size:11px;padding:2px 7px;border-radius:10px">${ci.length}</span></div></div>
+      <div class="cat-body">${ci.map(it=>`<div class="br-item"><span style="color:#ff9800;font-size:16px;flex-shrink:0">📌</span>
+        <div><div class="iname">${it.n}</div>${it.note?`<div class="inote">💡 ${it.note}</div>`:''}</div>
+      </div>`).join('')}</div></div>`;
+  });
+  document.getElementById('brasilView').innerHTML=html;
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',function(){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    this.classList.add('active');
+    document.getElementById('tab-'+this.dataset.tab).classList.add('active');
+    document.querySelector('.scroll-area').scrollTop=0;
+  });
+});
+
+function refreshAll(){renderPainel();renderComprar();renderDias();renderRoupas();renderTeam();renderBrasil();}
+
+// ── PWA SETUP ────────────────────────────────────────────────────────────────
+(function setupPWA(){
+  // Generate pink icon via canvas
+  const canvas=document.createElement('canvas');
+  canvas.width=512;canvas.height=512;
+  const ctx=canvas.getContext('2d');
+  const g=ctx.createLinearGradient(0,0,512,512);
+  g.addColorStop(0,'#e91e8c');g.addColorStop(1,'#9c27b0');
+  ctx.beginPath();
+  if(ctx.roundRect)ctx.roundRect(0,0,512,512,80);
+  else ctx.rect(0,0,512,512);
+  ctx.fillStyle=g;ctx.fill();
+  ctx.font='280px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🌸',256,270);
+  const iconURL=canvas.toDataURL('image/png');
+  document.getElementById('appIcon').href=iconURL;
+
+  // Inject manifest
+  const manifest={
+    name:'Enxoval da Cecília',short_name:'Cecília 🌸',
+    description:'Portal do enxoval da Cecília — Kissimmee/Orlando 2026',
+    start_url:window.location.href,display:'standalone',
+    background_color:'#e91e8c',theme_color:'#e91e8c',
+    orientation:'portrait-primary',
+    icons:[{src:iconURL,sizes:'512x512',type:'image/png',purpose:'any maskable'},{src:iconURL,sizes:'192x192',type:'image/png'}]
+  };
+  const mUrl='data:application/json,'+encodeURIComponent(JSON.stringify(manifest));
+  document.getElementById('manifest').href=mUrl;
+
+  // Install prompt (Android)
+  let deferredPrompt=null;
+  window.addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault();deferredPrompt=e;
+    const banner=document.getElementById('installBanner');
+    banner.classList.remove('hidden');
+    document.getElementById('installBtn').onclick=async()=>{
+      deferredPrompt.prompt();
+      const{outcome}=await deferredPrompt.userChoice;
+      if(outcome==='accepted')banner.classList.add('hidden');
+      deferredPrompt=null;
+    };
+  });
+  window.addEventListener('appinstalled',()=>document.getElementById('installBanner').classList.add('hidden'));
+})();
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+(function(){
+  const saved=sessionStorage.getItem('cecilia_user');
+  if(saved&&USERS[saved])enterApp(saved);
+})();
+</script>
+</body>
+</html>
