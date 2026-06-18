@@ -191,7 +191,10 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
       </div>
     </div>
     <div class="prog-wrap"><div class="prog-bar" id="mainProg" style="width:0%"></div></div>
-    <div class="prog-text" id="progText">Carregando...</div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="prog-text" id="progText">Carregando...</div>
+      <span id="syncDot" style="font-size:13px;opacity:.85"></span>
+    </div>
   </header>
 
   <div class="tabs">
@@ -238,6 +241,10 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
     <div class="view" id="tab-roupas">
       <div class="tip tip-blue">👗 <strong>Carter's Outlet (Qui 18/06)</strong> — 6 bodies ~US$25. Prefira zíper! Once Upon a Child para usados.</div>
       <div id="npSetup"></div>
+      <div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:12px 13px;margin-bottom:12px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px">✍️ Peças extras (compras avulsas)</div>
+        <div id="extrasView"></div>
+      </div>
       <div id="roupasView"></div>
     </div>
 
@@ -281,23 +288,63 @@ function enterApp(user){
   const u=USERS[user];
   document.getElementById('userIcon').textContent=u.icon;
   document.getElementById('userName').textContent=u.label;
-  loadState();refreshAll();loadSharedQty();
+  loadState();refreshAll();loadSharedData();
 }
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
-function SK(){return'cecilia_v3_'+currentUser;}
-function CK(){return'cecilia_cl_v1_'+currentUser;}
-let chk={},cChk={},qty={};
-function loadState(){chk=JSON.parse(localStorage.getItem(SK())||'{}');cChk=JSON.parse(localStorage.getItem(CK())||'{}');}
-function save(){localStorage.setItem(SK(),JSON.stringify(chk));}
-function saveC(){localStorage.setItem(CK(),JSON.stringify(cChk));}
-function toggle(id){chk[id]=!chk[id];if(!chk[id])delete chk[id];save();refreshAll();}
-function toggleC(k){cChk[k]=!cChk[k];if(!cChk[k])delete cChk[k];saveC();renderRoupas();renderTeam();}
-function getUserChecked(uid){return JSON.parse(localStorage.getItem('cecilia_v3_'+uid)||'{}');}
+// ── STATE (compartilhado via banco na nuvem) ──────────────────────────────────
+let chk={},cChk={},qty={},extras=[];
+// Mantido só para leitura local de fallback
+function getUserChecked(uid){return chk;}
+function loadState(){/* dados vêm do banco, não localStorage */}
 
-// ── SYNC COMPARTILHADO (npoint.io) ───────────────────────────────────────────
-const NP_ID=localStorage.getItem('cecilia_np_id')||'';
-let _qtyTimer=null,_syncStatus='';
+let _saveTimer=null;
+function schedSave(){clearTimeout(_saveTimer);_saveTimer=setTimeout(saveShared,1200);}
+
+function toggle(id){chk[id]=!chk[id];if(!chk[id])delete chk[id];schedSave();refreshAll();}
+function toggleC(k){cChk[k]=!cChk[k];if(!cChk[k])delete cChk[k];schedSave();renderRoupas();renderTeam();}
+function setQty(k,v){const n=Math.max(0,parseInt(v)||0);if(n===0)delete qty[k];else qty[k]=n;schedSave();}
+
+// ── EXTRAS ────────────────────────────────────────────────────────────────────
+function addExtra(){
+  const inp=document.getElementById('extraInput');
+  const txt=(inp.value||'').trim();
+  if(!txt)return;
+  extras.push({id:Date.now(),text:txt,done:false});
+  inp.value='';
+  schedSave();renderExtras();
+}
+function toggleExtra(id){
+  const e=extras.find(x=>x.id===id);
+  if(e)e.done=!e.done;
+  schedSave();renderExtras();
+}
+function removeExtra(id){
+  extras=extras.filter(x=>x.id!==id);
+  schedSave();renderExtras();
+}
+function renderExtras(){
+  const el=document.getElementById('extrasView');
+  if(!el)return;
+  el.innerHTML=`<div style="display:flex;gap:8px;margin-bottom:10px">
+    <input id="extraInput" placeholder="Ex: Vestidinho da vovó, Macacão especial..."
+      style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+      onkeydown="if(event.key==='Enter')addExtra()"
+      onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='var(--border)'">
+    <button onclick="addExtra()"
+      style="padding:10px 16px;background:var(--pink);color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;font-weight:700;flex-shrink:0">+</button>
+  </div>
+  ${extras.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;text-align:center">Nenhuma peça extra ainda</div>':
+    extras.map(e=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;${e.done?'opacity:.45':''}">
+      <input type="checkbox" ${e.done?'checked':''} onchange="toggleExtra(${e.id})"
+        style="accent-color:var(--pink);width:20px;height:20px;flex-shrink:0;cursor:pointer">
+      <span style="flex:1;font-size:13px;${e.done?'text-decoration:line-through;color:var(--muted)':''}">${e.text}</span>
+      <button onclick="removeExtra(${e.id})"
+        style="border:none;background:none;cursor:pointer;font-size:18px;color:#ccc;padding:2px 4px">🗑</button>
+    </div>`).join('')
+  }`
+}
+
+// ── BANCO COMPARTILHADO (npoint.io) ──────────────────────────────────────────
 function npUrl(id){return`https://api.npoint.io/${id}`;}
 
 function setSyncId(id){
@@ -307,36 +354,56 @@ function setSyncId(id){
   location.reload();
 }
 
-async function loadSharedQty(){
+async function loadSharedData(){
   const id=localStorage.getItem('cecilia_np_id');
-  if(!id){qty={};renderRoupas();return;}
+  if(!id){renderAll();return;}
   try{
     const r=await fetch(npUrl(id)+'?t='+Date.now());
-    if(r.ok){qty=(await r.json()).qty||{};}
-  }catch(e){qty={};}
-  renderRoupas();
+    if(r.ok){
+      const d=await r.json();
+      chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];
+    }
+  }catch(e){console.error('load error',e);}
+  renderAll();
 }
 
-async function saveSharedQty(){
+async function saveShared(){
   const id=localStorage.getItem('cecilia_np_id');
   if(!id)return;
   try{
-    await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qty})});
-  }catch(e){console.error('sync error',e);}
+    showSyncIndicator('💾');
+    await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chk,cChk,qty,extras})});
+    showSyncIndicator('✅');
+    setTimeout(()=>showSyncIndicator(''),2000);
+  }catch(e){showSyncIndicator('⚠️');console.error('save error',e);}
 }
 
-function setQty(k,v){
-  const n=Math.max(0,parseInt(v)||0);
-  if(n===0)delete qty[k];else qty[k]=n;
-  clearTimeout(_qtyTimer);
-  _qtyTimer=setTimeout(saveSharedQty,1500);
+function showSyncIndicator(icon){
+  const el=document.getElementById('syncDot');
+  if(el)el.textContent=icon;
 }
+
+// Importa dados da Fernanda (localStorage local) como base do banco
+async function importFernandaData(){
+  const fernData=localStorage.getItem('cecilia_v3_fernanda');
+  const fernCl=localStorage.getItem('cecilia_cl_v1_fernanda');
+  if(!fernData&&!fernCl){alert('Dados da Fernanda não encontrados neste dispositivo.\n\nAbra este app no celular dela e clique em "Importar dados da Fernanda".');return;}
+  if(!confirm('Importar os dados marcados pela Fernanda como base compartilhada?\nOs dados atuais do banco serão substituídos.'))return;
+  chk=JSON.parse(fernData||'{}');
+  cChk=JSON.parse(fernCl||'{}');
+  await saveShared();
+  renderAll();
+  alert(`✅ Importado! ${Object.keys(chk).length} itens marcados pela Fernanda agora são a base compartilhada.`);
+}
+
+function renderAll(){refreshAll();renderExtras();}
 
 async function createSyncPoint(){
   try{
     const btn=document.getElementById('createSyncBtn');
     btn.textContent='Criando...';btn.disabled=true;
-    const r=await fetch('https://api.npoint.io/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({qty:{}})});
+    const r=await fetch('https://api.npoint.io/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chk:{},cChk:{},qty:{},extras:[]})});
     const d=await r.json();
     if(d.id){
       localStorage.setItem('cecilia_np_id',d.id);
@@ -644,23 +711,30 @@ function renderNpSetup(){
   const el=document.getElementById('npSetup');
   if(!el)return;
   if(id){
-    el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;background:#e8f5e9;border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px">
-      <span>🔗 Sync ativo</span>
-      <span style="color:#2e7d32;font-weight:700;flex:1">${id}</span>
-      <button onclick="if(confirm('Trocar código de sync?')){localStorage.removeItem('cecilia_np_id');location.reload();}"
-        style="border:none;background:none;cursor:pointer;font-size:16px;color:#999">⚙️</button>
+    const hasFernanda=!!localStorage.getItem('cecilia_v3_fernanda');
+    el.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 13px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:${hasFernanda?'8px':'0'}">
+        <span style="font-size:16px">☁️</span>
+        <span style="flex:1"><strong>Banco ativo</strong> · código: <code style="background:#c8e6c9;padding:1px 5px;border-radius:4px">${id}</code></span>
+        <button onclick="loadSharedData()" title="Atualizar dados" style="border:none;background:none;cursor:pointer;font-size:16px">🔄</button>
+        <button onclick="if(confirm('Trocar banco?')){localStorage.removeItem('cecilia_np_id');location.reload();}" style="border:none;background:none;cursor:pointer;font-size:16px;color:#999">⚙️</button>
+      </div>
+      ${hasFernanda?`<button onclick="importFernandaData()"
+        style="width:100%;padding:8px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+        📥 Importar dados da Fernanda como base compartilhada
+      </button>`:''}
     </div>`;
   } else {
     el.innerHTML=`<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;padding:14px;margin-bottom:12px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:6px">🔗 Sincronizar quantidades entre celulares</div>
-      <div style="font-size:12px;color:#555;margin-bottom:10px">Para que toda a família veja as mesmas quantidades, é preciso configurar uma vez.</div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px">☁️ Conectar ao banco compartilhado</div>
+      <div style="font-size:12px;color:#555;margin-bottom:10px">Todos da família verão e editarão os mesmos dados em tempo real.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="createSyncBtn" onclick="createSyncPoint()"
-          style="flex:1;padding:10px;background:#e91e8c;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;min-width:140px">
-          ✨ Criar ponto de sync
+          style="flex:1;padding:10px;background:var(--pink);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;min-width:140px">
+          ✨ Criar banco novo
         </button>
         <div style="flex:1;display:flex;gap:6px;min-width:160px">
-          <input id="npCodeInput" placeholder="Já tem um código?"
+          <input id="npCodeInput" placeholder="Já tenho um código"
             style="flex:1;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px">
           <button onclick="setSyncId(document.getElementById('npCodeInput').value)"
             style="padding:9px 12px;background:#555;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">OK</button>
@@ -802,7 +876,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderTeam();renderBrasil();}
+function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();}
 
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 (function setupPWA(){
