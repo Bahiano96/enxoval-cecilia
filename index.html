@@ -429,7 +429,24 @@ function showOfflineBanner(show){
   showSyncIndicator(show?'⚠️':'');
 }
 
-function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras,d.customItems]);}
+function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras,d.customItems,d.suggestions]);}
+
+function isBankEmpty(d){
+  return Object.keys(d.chk||{}).length===0 &&
+         Object.keys(d.qty||{}).length===0 &&
+         (d.customItems||[]).length===0 &&
+         (d.suggestions||[]).length===0;
+}
+
+function showEmptyBankWarning(){
+  let el=document.getElementById('emptyBankBanner');
+  if(el)return;
+  el=document.createElement('div');
+  el.id='emptyBankBanner';
+  el.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9998;background:#e65100;color:#fff;padding:14px 16px;font-size:13px;font-weight:700;text-align:center;box-shadow:0 -2px 12px rgba(0,0,0,.3);line-height:1.6';
+  el.innerHTML='⚠️ O BANCO ESTÁ VAZIO — seus dados podem estar no backup local!<br><button onclick="restoreFromBackup();document.getElementById(\'emptyBankBanner\').remove()" style="margin-top:6px;padding:7px 18px;background:#fff;color:#e65100;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">🔁 Restaurar backup agora</button><button onclick="document.getElementById(\'emptyBankBanner\').remove()" style="margin-top:6px;margin-left:10px;padding:7px 14px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;cursor:pointer;font-size:12px">Ignorar</button>';
+  document.body.appendChild(el);
+}
 
 async function loadSharedData(silent=false){
   try{
@@ -440,6 +457,17 @@ async function loadSharedData(silent=false){
       _bankLoaded=true;
       _failCount=0;
       showOfflineBanner(false);
+      // Protege contra banco vazio: se o banco não tem dados mas há backup local, avisa
+      if(isBankEmpty(d)&&localStorage.getItem('cecilia_backup')){
+        const bk=JSON.parse(localStorage.getItem('cecilia_backup'));
+        const hasLocalData=Object.keys(bk.qty||{}).length>0||Object.keys(bk.chk||{}).length>0;
+        if(hasLocalData){
+          _remoteHash=dataHash(d);
+          showEmptyBankWarning();
+          if(!silent)showSyncIndicator('⚠️');
+          return;
+        }
+      }
       const h=dataHash(d);
       if(h!==_remoteHash){
         _remoteHash=h;
