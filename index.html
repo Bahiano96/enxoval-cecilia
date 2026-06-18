@@ -458,6 +458,8 @@ async function saveShared(){
   try{
     showSyncIndicator('💾');
     const payload={chk,cChk,qty,extras,customItems};
+    // Salva backup local antes de enviar para a nuvem
+    try{localStorage.setItem('cecilia_backup',JSON.stringify({...payload,_ts:Date.now()}));}catch(_){}
     await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     _remoteHash=dataHash(payload);
     showSyncIndicator('✅');
@@ -853,14 +855,33 @@ function parseItem(str){
   const meta=parseInt(m[1]);
   return{meta,name:m[2]};
 }
+async function restoreFromBackup(){
+  const raw=localStorage.getItem('cecilia_backup');
+  if(!raw){alert('Nenhum backup local encontrado neste dispositivo.');return;}
+  const bk=JSON.parse(raw);
+  const ts=bk._ts?new Date(bk._ts).toLocaleString('pt-BR'):'data desconhecida';
+  const n=Object.keys(bk.chk||{}).length;
+  if(!confirm(`Restaurar backup local?\nSalvo em: ${ts}\n${n} itens marcados\n\nOs dados atuais do banco serão substituídos.`))return;
+  chk=bk.chk||{};cChk=bk.cChk||{};qty=bk.qty||{};extras=bk.extras||[];customItems=bk.customItems||[];
+  _bankLoaded=true;
+  await saveShared();
+  renderAll();
+  alert(`✅ Restaurado! ${n} itens de volta no banco compartilhado.`);
+}
+
 function renderNpSetup(){
   const id=localStorage.getItem('cecilia_np_id');
   const el=document.getElementById('npSetup');
   if(!el)return;
+  const hasBackup=!!localStorage.getItem('cecilia_backup');
+  const backupBtn=hasBackup?`<button onclick="restoreFromBackup()"
+    style="width:100%;padding:8px;background:#b71c1c;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px">
+    🔁 Restaurar backup local deste dispositivo
+  </button>`:'';
   if(id){
     const hasFernanda=!!localStorage.getItem('cecilia_v3_fernanda');
     el.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 13px;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:${hasFernanda?'8px':'0'}">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:${hasFernanda||hasBackup?'8px':'0'}">
         <span style="font-size:16px">☁️</span>
         <span style="flex:1"><strong>Banco ativo</strong> · código: <code style="background:#c8e6c9;padding:1px 5px;border-radius:4px">${id}</code></span>
         <button onclick="loadSharedData()" title="Atualizar dados" style="border:none;background:none;cursor:pointer;font-size:16px">🔄</button>
@@ -870,6 +891,7 @@ function renderNpSetup(){
         style="width:100%;padding:8px;background:#1565c0;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
         📥 Importar dados da Fernanda como base compartilhada
       </button>`:''}
+      ${backupBtn}
     </div>`;
   } else {
     el.innerHTML=`<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;padding:14px;margin-bottom:12px">
@@ -887,6 +909,7 @@ function renderNpSetup(){
             style="padding:9px 12px;background:#555;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">OK</button>
         </div>
       </div>
+      ${backupBtn}
     </div>`;
   }
 }
