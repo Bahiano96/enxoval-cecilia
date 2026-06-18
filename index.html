@@ -205,6 +205,7 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
     <div class="tab" data-tab="roupas">👗 Roupas</div>
     <div class="tab" data-tab="dias">📅 Por Dia</div>
     <div class="tab" data-tab="equipe">👥 Equipe</div>
+    <div class="tab" data-tab="sugestoes">📝 Sugestões</div>
     <div class="tab" data-tab="lojas">🏪 Lojas</div>
     <div class="tab" data-tab="brasil">📋 Ref.</div>
   </div>
@@ -259,6 +260,10 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
       <div class="card"><div class="card-title">🌸 Equipe</div><div id="teamView"></div></div>
     </div>
 
+    <div class="view" id="tab-sugestoes">
+      <div id="sugestoesView"></div>
+    </div>
+
     <div class="view" id="tab-lojas">
       <div id="lojasView"></div>
     </div>
@@ -302,7 +307,7 @@ function enterApp(user){
 }
 
 // ── STATE (compartilhado via banco na nuvem) ──────────────────────────────────
-let chk={},cChk={},qty={},extras=[],customItems=[];
+let chk={},cChk={},qty={},extras=[],customItems=[],suggestions=[];
 // Mantido só para leitura local de fallback
 function getUserChecked(uid){return chk;}
 function loadState(){/* dados vêm do banco, não localStorage */}
@@ -438,7 +443,7 @@ async function loadSharedData(silent=false){
       const h=dataHash(d);
       if(h!==_remoteHash){
         _remoteHash=h;
-        chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];customItems=d.customItems||[];
+        chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];customItems=d.customItems||[];suggestions=d.suggestions||[];
         renderAll();
       }
     } else {
@@ -469,7 +474,7 @@ async function saveShared(){
   _isSaving=true;
   try{
     showSyncIndicator('💾');
-    const payload={chk,cChk,qty,extras,customItems};
+    const payload={chk,cChk,qty,extras,customItems,suggestions};
     // Salva backup local antes de enviar para a nuvem
     try{localStorage.setItem('cecilia_backup',JSON.stringify({...payload,_ts:Date.now()}));}catch(_){}
     await fetch(npUrl(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -861,7 +866,7 @@ async function restoreFromBackup(){
   const ts=bk._ts?new Date(bk._ts).toLocaleString('pt-BR'):'data desconhecida';
   const n=Object.keys(bk.chk||{}).length;
   if(!confirm(`Restaurar backup local?\nSalvo em: ${ts}\n${n} itens marcados\n\nOs dados atuais do banco serão substituídos.`))return;
-  chk=bk.chk||{};cChk=bk.cChk||{};qty=bk.qty||{};extras=bk.extras||[];customItems=bk.customItems||[];
+  chk=bk.chk||{};cChk=bk.cChk||{};qty=bk.qty||{};extras=bk.extras||[];customItems=bk.customItems||[];suggestions=bk.suggestions||[];
   _bankLoaded=true;
   await saveShared();
   renderAll();
@@ -1097,7 +1102,78 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();renderLojas();renderCustomItems();}
+function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();renderLojas();renderCustomItems();renderSugestoes();}
+
+// ── SUGESTÕES ─────────────────────────────────────────────────────────────────
+function addSugestao(){
+  const nome=document.getElementById('sugNome').value.trim();
+  const marca=document.getElementById('sugMarca').value.trim();
+  const obs=document.getElementById('sugObs').value.trim();
+  if(!nome&&!marca){alert('Digite pelo menos o produto ou a marca.');return;}
+  suggestions.push({id:Date.now(),nome,marca,obs,done:false});
+  document.getElementById('sugNome').value='';
+  document.getElementById('sugMarca').value='';
+  document.getElementById('sugObs').value='';
+  schedSave();renderSugestoes();
+}
+function toggleSugestao(id){
+  const s=suggestions.find(x=>x.id===id);
+  if(s){s.done=!s.done;schedSave();renderSugestoes();}
+}
+function removeSugestao(id){
+  suggestions=suggestions.filter(x=>x.id!==id);
+  schedSave();renderSugestoes();
+}
+function renderSugestoes(){
+  const el=document.getElementById('sugestoesView');
+  if(!el)return;
+  const pendentes=suggestions.filter(x=>!x.done);
+  const comprados=suggestions.filter(x=>x.done);
+  const card=(s)=>`
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div onclick="toggleSugestao(${s.id})" style="cursor:pointer;flex-shrink:0;width:22px;height:22px;border-radius:50%;border:2px solid ${s.done?'var(--pink)':'var(--border)'};background:${s.done?'var(--pink)':'transparent'};display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;margin-top:2px">${s.done?'✓':''}</div>
+      <div style="flex:1;${s.done?'opacity:.55;text-decoration:line-through':''}">
+        ${s.nome?`<div style="font-weight:700;font-size:14px;color:var(--dark)">${s.nome}</div>`:''}
+        ${s.marca?`<div style="font-size:13px;color:var(--pink);font-weight:600">🏷 ${s.marca}</div>`:''}
+        ${s.obs?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${s.obs}</div>`:''}
+      </div>
+      <div onclick="removeSugestao(${s.id})" style="cursor:pointer;color:var(--muted);font-size:18px;flex-shrink:0;line-height:1;padding:2px 4px" title="Remover">×</div>
+    </div>`;
+  el.innerHTML=`
+    <div class="card">
+      <div class="card-title">✏️ Nova Sugestão</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <input id="sugNome" placeholder="Produto (ex: Macacão listrado, Banheira dobrável...)"
+          style="padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+          onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='var(--border)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('sugMarca').focus()">
+        <input id="sugMarca" placeholder="Marca (ex: Carter's, Graco, Skip Hop...)"
+          style="padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+          onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='var(--border)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('sugObs').focus()">
+        <input id="sugObs" placeholder="Observação / link (opcional)"
+          style="padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+          onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='var(--border)'"
+          onkeydown="if(event.key==='Enter')addSugestao()">
+        <button onclick="addSugestao()"
+          style="padding:11px;background:var(--pink);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer">
+          + Adicionar Sugestão
+        </button>
+      </div>
+    </div>
+    ${pendentes.length>0?`
+    <div class="card">
+      <div class="card-title">💡 Para Comprar (${pendentes.length})</div>
+      ${pendentes.map(card).join('')}
+    </div>`:''}
+    ${comprados.length>0?`
+    <div class="card">
+      <div class="card-title" style="color:var(--muted)">✅ Já Comprado (${comprados.length})</div>
+      ${comprados.map(card).join('')}
+    </div>`:''}
+    ${suggestions.length===0?`<div class="card" style="text-align:center;color:var(--muted);padding:32px 16px">Nenhuma sugestão ainda.<br><span style="font-size:12px">Anote marcas e produtos que você achar em vídeos, lojas ou indicações!</span></div>`:''}
+  `;
+}
 
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 (function setupPWA(){
