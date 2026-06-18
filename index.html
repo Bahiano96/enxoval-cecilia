@@ -205,6 +205,7 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
     <div class="tab" data-tab="roupas">👗 Roupas</div>
     <div class="tab" data-tab="dias">📅 Por Dia</div>
     <div class="tab" data-tab="equipe">👥 Equipe</div>
+    <div class="tab" data-tab="lojas">🏪 Lojas</div>
     <div class="tab" data-tab="brasil">📋 Ref.</div>
   </div>
 
@@ -216,6 +217,7 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
     </div>
 
     <div class="view active" id="tab-painel">
+      <div id="painelSyncSetup"></div>
       <div class="stats" id="statsGrid"></div>
       <div class="card"><div class="card-title">⭐ Prioritários Pendentes</div><div id="priList"></div></div>
       <div class="card"><div class="card-title">📅 Plano por Dia</div><div id="dayPlan"></div></div>
@@ -253,6 +255,10 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
       <div class="card"><div class="card-title">🌸 Equipe</div><div id="teamView"></div></div>
     </div>
 
+    <div class="view" id="tab-lojas">
+      <div id="lojasView"></div>
+    </div>
+
     <div class="view" id="tab-brasil">
       <div class="tip" style="background:#fff8e1;color:#e65100;border-left:3px solid #ff9800">📋 <strong>Referência da sua amiga</strong> — itens que ela comprou no Brasil. Use como base para decidir o que comprar por lá.</div>
       <div id="brasilView"></div>
@@ -288,7 +294,7 @@ function enterApp(user){
   const u=USERS[user];
   document.getElementById('userIcon').textContent=u.icon;
   document.getElementById('userName').textContent=u.label;
-  loadState();refreshAll();loadSharedData();
+  loadState();refreshAll();loadSharedData().then(startPolling);
 }
 
 // ── STATE (compartilhado via banco na nuvem) ──────────────────────────────────
@@ -354,29 +360,54 @@ function setSyncId(id){
   location.reload();
 }
 
-async function loadSharedData(){
+// hash para detectar mudanças remotas sem re-renderizar à toa
+let _remoteHash='';
+let _isSaving=false;
+let _pollInterval=null;
+
+function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras]);}
+
+async function loadSharedData(silent=false){
   const id=localStorage.getItem('cecilia_np_id');
   if(!id){renderAll();return;}
   try{
+    if(!silent)showSyncIndicator('🔄');
     const r=await fetch(npUrl(id)+'?t='+Date.now());
     if(r.ok){
       const d=await r.json();
-      chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];
+      const h=dataHash(d);
+      if(h!==_remoteHash){
+        _remoteHash=h;
+        chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];
+        renderAll();
+      }
     }
-  }catch(e){console.error('load error',e);}
-  renderAll();
+    if(!silent)showSyncIndicator('');
+  }catch(e){if(!silent)showSyncIndicator('⚠️');}
+}
+
+function startPolling(){
+  if(_pollInterval)clearInterval(_pollInterval);
+  const id=localStorage.getItem('cecilia_np_id');
+  if(!id)return;
+  // atualiza automaticamente a cada 8 segundos
+  _pollInterval=setInterval(()=>{
+    if(!_isSaving)loadSharedData(true);
+  },8000);
 }
 
 async function saveShared(){
   const id=localStorage.getItem('cecilia_np_id');
   if(!id)return;
+  _isSaving=true;
   try{
     showSyncIndicator('💾');
-    await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chk,cChk,qty,extras})});
+    const payload={chk,cChk,qty,extras};
+    await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    _remoteHash=dataHash(payload);
     showSyncIndicator('✅');
-    setTimeout(()=>showSyncIndicator(''),2000);
-  }catch(e){showSyncIndicator('⚠️');console.error('save error',e);}
+    setTimeout(()=>{showSyncIndicator('');_isSaving=false;},1500);
+  }catch(e){showSyncIndicator('⚠️');_isSaving=false;}
 }
 
 function showSyncIndicator(icon){
@@ -407,13 +438,34 @@ async function createSyncPoint(){
     const d=await r.json();
     if(d.id){
       localStorage.setItem('cecilia_np_id',d.id);
+      startPolling();
       document.getElementById('npSetup').innerHTML=`<div style="background:#e8f5e9;border-radius:10px;padding:12px;text-align:center">
-        ✅ <strong>Ponto de sincronização criado!</strong><br>
-        <span style="font-size:12px;color:#555">Código: <strong>${d.id}</strong></span><br>
-        <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Recarregar →</button>
+        ✅ <strong>Banco criado!</strong><br>
+        <span style="font-size:12px;color:#555">Código: <code style="background:#c8e6c9;padding:1px 6px;border-radius:4px;font-size:13px">${d.id}</code></span><br>
+        <span style="font-size:11px;color:#777;display:block;margin-top:4px">Compartilhe esse código com a família para conectar</span>
+        <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Ativar sync →</button>
       </div>`;
     }
   }catch(e){alert('Erro ao criar sync: '+e.message);}
+}
+async function createSyncPointFromPainel(){
+  const btn=document.getElementById('createSyncBtnP');
+  if(btn){btn.textContent='Criando...';btn.disabled=true;}
+  try{
+    const r=await fetch('https://api.npoint.io/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chk:{},cChk:{},qty:{},extras:[]})});
+    const d=await r.json();
+    if(d.id){
+      localStorage.setItem('cecilia_np_id',d.id);
+      startPolling();
+      const painelSetup=document.getElementById('painelSyncSetup');
+      if(painelSetup)painelSetup.innerHTML=`<div style="background:#e8f5e9;border:1.5px solid #66bb6a;border-radius:10px;padding:12px;text-align:center;margin-bottom:14px">
+        ✅ <strong>Banco criado!</strong><br>
+        <span style="font-size:12px;color:#555">Código: <code style="background:#c8e6c9;padding:1px 6px;border-radius:4px;font-size:13px">${d.id}</code></span><br>
+        <span style="font-size:11px;color:#777;display:block;margin-top:4px">Compartilhe esse código com a família para conectar</span>
+        <button onclick="location.reload()" style="margin-top:8px;padding:8px 16px;background:#2e7d32;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">Ativar sync →</button>
+      </div>`;
+    }
+  }catch(e){alert('Erro ao criar sync: '+e.message);if(btn){btn.textContent='✨ Criar banco';btn.disabled=false;}}
 }
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const DAYS={
@@ -639,6 +691,26 @@ function renderItem(it){
 
 // ── PAINEL ───────────────────────────────────────────────────────────────────
 function renderPainel(){
+  // Banner de setup do banco se não configurado
+  const painelSetup=document.getElementById('painelSyncSetup');
+  if(painelSetup){
+    const hasBank=!!localStorage.getItem('cecilia_np_id');
+    painelSetup.innerHTML=hasBank?'':
+      `<div style="background:#fff3e0;border:1.5px solid #ffb74d;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px">☁️ Banco compartilhado não configurado</div>
+        <div style="font-size:12px;color:#555;margin-bottom:10px">Configure para que toda a família veja os mesmos dados automaticamente.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button id="createSyncBtnP" onclick="createSyncPointFromPainel()"
+            style="flex:1;padding:10px;background:var(--pink);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;min-width:140px">✨ Criar banco</button>
+          <div style="flex:1;display:flex;gap:6px;min-width:160px">
+            <input id="npCodeInputP" placeholder="Já tenho um código"
+              style="flex:1;padding:9px;border:1.5px solid #ddd;border-radius:8px;font-size:13px">
+            <button onclick="setSyncId(document.getElementById('npCodeInputP').value)"
+              style="padding:9px 12px;background:#555;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer">OK</button>
+          </div>
+        </div>
+      </div>`;
+  }
   const t=total(),d=doneCount(),pct=t>0?Math.round(d/t*100):0;
   document.getElementById('mainProg').style.width=pct+'%';
   document.getElementById('progText').textContent=`${d} de ${t} itens comprados (${pct}%)`;
@@ -838,6 +910,91 @@ function renderUtilidades(){
   document.getElementById('utilView').innerHTML=html;
 }
 
+// ── LOJAS ────────────────────────────────────────────────────────────────────
+const LOJAS=[
+  {id:'Target',       icon:'🎯', color:'#cc0000', dia:'D1', dica:'Qua 17/06 — seção baby, muitos itens de higiene e utilidades'},
+  {id:'Walmart',      icon:'🛒', color:'#0071ce', dia:'D1', dica:'Qua 17/06 — ótimo para itens de higiene em quantidade'},
+  {id:'MacroBaby',    icon:'🍼', color:'#e91e8c', dia:'D1', dica:'Qua 17/06 — especializado em bebês, carrinho e bebê conforto'},
+  {id:"Carter's",     icon:'👕', color:'#e65100', dia:'D2', dica:"Qui 18/06 — outlet de roupas, 6 bodies ~US$25"},
+  {id:'Best Buy',     icon:'📱', color:'#003087', dia:'D3', dica:'Sex 19/06 — eletrônicos, babá eletrônica, monitor sonoro'},
+  {id:'Dollar Tree',  icon:'💲', color:'#008000', dia:'D3', dica:'Sex 19/06 — itens pequenos muito baratos'},
+  {id:'OshKosh',      icon:'👶', color:'#d32f2f', dia:'D2', dica:'Qui 18/06 — outlet de roupas infantis'},
+  {id:'Gap',          icon:'🧢', color:'#1e88e5', dia:'D2', dica:'Qui 18/06 — outlet, boas peças de roupas'},
+  {id:'Nike',         icon:'✔️',  color:'#111',    dia:'D2', dica:'Qui 18/06 — outlet, acessórios e roupas'},
+  {id:'Burlington',   icon:'🏬', color:'#7b1fa2', dia:'D1', dica:'Qua 17/06 — mantas e itens de cama a bom preço'},
+  {id:'Marshalls',    icon:'🏷',  color:'#00695c', dia:'D1', dica:'Qua 17/06 — roupas de mãe e peças avulsas'},
+  {id:'Amazon',       icon:'📦', color:'#ff9900', dia:'D1', dica:'Compra online — itens difíceis de achar nas lojas'},
+];
+let _lojaAtiva=null;
+function renderLojas(){
+  const el=document.getElementById('lojasView');
+  if(!el)return;
+  // Botões de seleção de loja
+  let html=`<div style="margin-bottom:14px">
+    <div style="font-weight:700;font-size:13px;color:var(--muted);margin-bottom:10px;letter-spacing:.5px">SELECIONE A LOJA</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">`;
+  for(const lj of LOJAS){
+    const ativa=_lojaAtiva===lj.id;
+    html+=`<button onclick="selectLoja('${lj.id}')"
+      style="display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:20px;border:2px solid ${ativa?lj.color:'#e0e0e0'};
+             background:${ativa?lj.color+'18':'#fff'};color:${ativa?lj.color:'#555'};
+             font-size:13px;font-weight:${ativa?'700':'500'};cursor:pointer;transition:all .2s">
+      ${lj.icon} ${lj.id}
+    </button>`;
+  }
+  html+=`</div></div>`;
+
+  if(!_lojaAtiva){
+    html+=`<div class="empty" style="padding:40px 20px">
+      👆 Selecione uma loja para ver os itens sugeridos
+    </div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  const lj=LOJAS.find(l=>l.id===_lojaAtiva);
+  const its=euaItems().filter(i=>i.st&&i.st.toLowerCase().includes(_lojaAtiva.toLowerCase()));
+  const done=its.filter(i=>chk[i.id]).length;
+  const pend=its.length-done;
+
+  // Dica da loja
+  html+=`<div style="background:${lj.color}12;border:1.5px solid ${lj.color}44;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+    <div style="font-weight:700;font-size:15px;color:${lj.color};margin-bottom:2px">${lj.icon} ${lj.id}</div>
+    <div style="font-size:12px;color:#555">📅 ${lj.dica}</div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <span style="background:${lj.color};color:#fff;padding:3px 11px;border-radius:12px;font-size:12px;font-weight:700">${its.length} itens</span>
+      <span style="background:#e8f5e9;color:#2e7d32;padding:3px 11px;border-radius:12px;font-size:12px;font-weight:700">✅ ${done} comprados</span>
+      ${pend>0?`<span style="background:#fff3e0;color:#e65100;padding:3px 11px;border-radius:12px;font-size:12px;font-weight:700">⏳ ${pend} pendentes</span>`:''}
+    </div>
+  </div>`;
+
+  if(!its.length){
+    html+=`<div class="empty">Nenhum item mapeado para esta loja</div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  // Agrupar por categoria
+  const byCat={};
+  for(const it of its){
+    if(!byCat[it.cat])byCat[it.cat]=[]; byCat[it.cat].push(it);
+  }
+  for(const [cat,citens] of Object.entries(byCat)){
+    const catDone=citens.filter(i=>chk[i.id]).length;
+    const icon=CE[cat]||'📦';
+    html+=`<div style="margin-bottom:4px;padding:7px 10px;background:#f8f8f8;border-radius:8px;font-weight:700;font-size:12px;color:#666;display:flex;justify-content:space-between;align-items:center">
+      <span>${icon} ${cat}</span>
+      <span style="font-weight:400;font-size:11px">${catDone}/${citens.length}</span>
+    </div>`;
+    html+=citens.map(renderItem).join('');
+  }
+
+  el.innerHTML=html;
+}
+function selectLoja(id){
+  _lojaAtiva=(_lojaAtiva===id)?null:id;
+  renderLojas();
+}
 // ── EQUIPE ───────────────────────────────────────────────────────────────────
 function renderTeam(){
   const t=total();
@@ -876,7 +1033,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();}
+function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();renderLojas();}
 
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 (function setupPWA(){
