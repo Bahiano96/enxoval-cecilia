@@ -221,6 +221,11 @@ header h1{font-size:17px;font-weight:700;line-height:1.2}
       <div class="stats" id="statsGrid"></div>
       <div class="card"><div class="card-title">⭐ Prioritários Pendentes</div><div id="priList"></div></div>
       <div class="card"><div class="card-title">📅 Plano por Dia</div><div id="dayPlan"></div></div>
+      <div class="card">
+        <div class="card-title">🛍️ Compras Personalizadas</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Itens que você comprou e não estavam na lista</div>
+        <div id="customItemsView"></div>
+      </div>
     </div>
 
     <div class="view" id="tab-eletronicos">
@@ -298,7 +303,7 @@ function enterApp(user){
 }
 
 // ── STATE (compartilhado via banco na nuvem) ──────────────────────────────────
-let chk={},cChk={},qty={},extras=[];
+let chk={},cChk={},qty={},extras=[],customItems=[];
 // Mantido só para leitura local de fallback
 function getUserChecked(uid){return chk;}
 function loadState(){/* dados vêm do banco, não localStorage */}
@@ -350,6 +355,48 @@ function renderExtras(){
   }`
 }
 
+// ── COMPRAS PERSONALIZADAS ────────────────────────────────────────────────────
+function addCustomItem(){
+  const inp=document.getElementById('customInput');
+  const txt=(inp.value||'').trim();
+  if(!txt)return;
+  customItems.push({id:Date.now(),name:txt,done:false});
+  inp.value='';
+  schedSave();renderCustomItems();
+}
+function toggleCustomItem(id){
+  const it=customItems.find(x=>x.id===id);
+  if(it)it.done=!it.done;
+  schedSave();renderCustomItems();
+}
+function removeCustomItem(id){
+  customItems=customItems.filter(x=>x.id!==id);
+  schedSave();renderCustomItems();
+}
+function renderCustomItems(){
+  const el=document.getElementById('customItemsView');
+  if(!el)return;
+  const done=customItems.filter(x=>x.done).length;
+  el.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input id="customInput" placeholder="Ex: Banheira dobrável, Macacão listrado..."
+        style="flex:1;padding:10px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+        onkeydown="if(event.key==='Enter')addCustomItem()"
+        onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='var(--border)'">
+      <button onclick="addCustomItem()"
+        style="padding:10px 16px;background:var(--pink);color:#fff;border:none;border-radius:10px;font-size:20px;cursor:pointer;font-weight:700;flex-shrink:0">+</button>
+    </div>
+    ${customItems.length===0?'<div style="color:var(--muted);font-size:13px;padding:8px 0;text-align:center">Nenhuma compra personalizada ainda</div>':
+      `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">${done} de ${customItems.length} comprados</div>`+
+      customItems.map(it=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;${it.done?'opacity:.45':''}">
+        <input type="checkbox" ${it.done?'checked':''} onchange="toggleCustomItem(${it.id})"
+          style="accent-color:var(--pink);width:20px;height:20px;flex-shrink:0;cursor:pointer">
+        <span style="flex:1;font-size:13px;${it.done?'text-decoration:line-through;color:var(--muted)':''}">${it.name}</span>
+        <button onclick="removeCustomItem(${it.id})"
+          style="border:none;background:none;cursor:pointer;font-size:18px;color:#ccc;padding:2px 4px">🗑</button>
+      </div>`).join('')
+    }`;
+}
 // ── BANCO COMPARTILHADO (npoint.io) ──────────────────────────────────────────
 function npUrl(id){return`https://api.npoint.io/${id}`;}
 
@@ -365,7 +412,7 @@ let _remoteHash='';
 let _isSaving=false;
 let _pollInterval=null;
 
-function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras]);}
+function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras,d.customItems]);}
 
 async function loadSharedData(silent=false){
   const id=localStorage.getItem('cecilia_np_id');
@@ -378,7 +425,7 @@ async function loadSharedData(silent=false){
       const h=dataHash(d);
       if(h!==_remoteHash){
         _remoteHash=h;
-        chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];
+        chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];customItems=d.customItems||[];
         renderAll();
       }
     }
@@ -402,7 +449,7 @@ async function saveShared(){
   _isSaving=true;
   try{
     showSyncIndicator('💾');
-    const payload={chk,cChk,qty,extras};
+    const payload={chk,cChk,qty,extras,customItems};
     await fetch(npUrl(id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     _remoteHash=dataHash(payload);
     showSyncIndicator('✅');
@@ -674,6 +721,20 @@ function mkTag(cls,txt){return`<span class="tag ${cls}">${txt}</span>`;}
 
 function renderItem(it){
   const ck=chk[it.id]||false,di=it.d?DAYS[it.d]:null,dc=di?di.c:'#999';
+  // Detecta quantidade no nome do item (ex: "4 Lençóis", "10 Cueiros")
+  const qm=it.n.match(/^(\d+)\s+/);
+  const meta=qm?parseInt(qm[1]):0;
+  const bought=qty[it.id]||0;
+  const qtyHtml=meta>1?`<div style="display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:wrap">
+    <span style="font-size:11px;color:#888">Comprado:</span>
+    <input type="number" min="0" max="${meta}" value="${bought}"
+      oninput="setQty('${it.id}',this.value)"
+      style="width:46px;padding:3px 7px;border:1.5px solid #e0e0e0;border-radius:7px;font-size:13px;text-align:center;font-weight:700"
+      onfocus="this.style.borderColor='var(--pink)'" onblur="this.style.borderColor='#e0e0e0'">
+    <span style="font-size:11px;color:#888">de ${meta}</span>
+    ${bought>=meta&&meta>0?'<span style="font-size:11px;color:#2e7d32;font-weight:700">✅ completo</span>':
+      bought>0?`<span style="font-size:11px;color:#e65100;font-weight:600">⏳ ${meta-bought} faltando</span>`:''}
+  </div>`:'';
   return`<div class="item${ck?' done':''}${it.p==='high'?' hi':''}">
     <input type="checkbox" class="icheck" ${ck?'checked':''} onchange="toggle('${it.id}')">
     <div class="icontent">
@@ -685,6 +746,7 @@ function renderItem(it){
         ${it.p==='high'?mkTag('t-hi','⭐ PRIORITÁRIO'):''}
       </div>
       ${it.note?`<div class="inote">💡 ${it.note}</div>`:''}
+      ${qtyHtml}
     </div>
   </div>`;
 }
@@ -1033,7 +1095,7 @@ document.querySelectorAll('.tab').forEach(t=>{
   });
 });
 
-function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();renderLojas();}
+function refreshAll(){renderPainel();renderEletronicos();renderCremes();renderUtilidades();renderDias();renderRoupas();renderExtras();renderTeam();renderBrasil();renderLojas();renderCustomItems();}
 
 // ── PWA SETUP ────────────────────────────────────────────────────────────────
 (function setupPWA(){
