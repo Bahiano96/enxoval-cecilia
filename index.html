@@ -407,6 +407,22 @@ let _isSaving=false;
 let _pollInterval=null;
 // Proteção: só permite salvar depois de ter carregado o banco pelo menos uma vez
 let _bankLoaded=false;
+// Contador de falhas consecutivas
+let _failCount=0;
+const FAIL_THRESHOLD=3; // alerta após 3 falhas seguidas (~24s)
+
+function showOfflineBanner(show){
+  let el=document.getElementById('offlineBanner');
+  if(!el){
+    el=document.createElement('div');
+    el.id='offlineBanner';
+    el.style.cssText='display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#b71c1c;color:#fff;padding:14px 16px;font-size:14px;font-weight:700;text-align:center;box-shadow:0 -2px 12px rgba(0,0,0,.3);line-height:1.4';
+    el.innerHTML='⚠️ SEM CONEXÃO COM O BANCO — suas marcações NÃO estão sendo salvas!<br><span style="font-size:12px;font-weight:400">Verifique sua internet ou tente recarregar o app.</span>';
+    document.body.appendChild(el);
+  }
+  el.style.display=show?'block':'none';
+  showSyncIndicator(show?'⚠️':'');
+}
 
 function dataHash(d){return JSON.stringify([d.chk,d.cChk,d.qty,d.extras,d.customItems]);}
 
@@ -417,15 +433,24 @@ async function loadSharedData(silent=false){
     if(r.ok){
       const d=await r.json();
       _bankLoaded=true;
+      _failCount=0;
+      showOfflineBanner(false);
       const h=dataHash(d);
       if(h!==_remoteHash){
         _remoteHash=h;
         chk=d.chk||{};cChk=d.cChk||{};qty=d.qty||{};extras=d.extras||[];customItems=d.customItems||[];
         renderAll();
       }
+    } else {
+      _failCount++;
+      if(_failCount>=FAIL_THRESHOLD)showOfflineBanner(true);
     }
-    if(!silent)showSyncIndicator('');
-  }catch(e){if(!silent)showSyncIndicator('⚠️');}
+    if(!silent&&_failCount<FAIL_THRESHOLD)showSyncIndicator('');
+  }catch(e){
+    _failCount++;
+    if(_failCount>=FAIL_THRESHOLD)showOfflineBanner(true);
+    else if(!silent)showSyncIndicator('⚠️');
+  }
 }
 
 function startPolling(){
@@ -449,9 +474,15 @@ async function saveShared(){
     try{localStorage.setItem('cecilia_backup',JSON.stringify({...payload,_ts:Date.now()}));}catch(_){}
     await fetch(npUrl(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     _remoteHash=dataHash(payload);
+    _failCount=0;showOfflineBanner(false);
     showSyncIndicator('✅');
     setTimeout(()=>{showSyncIndicator('');_isSaving=false;},1500);
-  }catch(e){showSyncIndicator('⚠️');_isSaving=false;}
+  }catch(e){
+    _failCount++;
+    if(_failCount>=FAIL_THRESHOLD)showOfflineBanner(true);
+    else showSyncIndicator('⚠️');
+    _isSaving=false;
+  }
 }
 
 function showSyncIndicator(icon){
